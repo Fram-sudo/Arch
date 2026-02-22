@@ -1,0 +1,65 @@
+configuration {
+    modi: "drun";
+    show-icons: true;
+    display-drun: " ";
+    drun-display-format: "{name}";
+    font: "JetBrainsMono Nerd Font 12";
+}
+
+* {
+    /* Tes couleurs exactes */
+    bg: #1D171E;        /* Fond noir façon */
+    fg: #E2D9E0;        /* Texte clair */
+    accent: #A32335;    /* Rouge bordeaux */
+    border-col: #2E2525; /* Fond widget clair */
+    
+    background-color: transparent;
+    text-color: @fg;
+}
+
+window {
+    width: 35%;
+    background-color: @bg;
+    border: 2px;
+    border-color: @accent;
+    border-radius: 12px;
+}
+
+mainbox {
+    padding: 20px;
+    children: [inputbar, listview];
+}
+
+inputbar {
+    background-color: @border-col;
+    margin: 0px 0px 15px 0px;
+    border-radius: 8px;
+    padding: 10px;
+    children: [prompt, entry];
+}
+
+prompt {
+    text-color: @accent;
+    padding: 0px 10px 0px 0px;
+}
+
+entry {
+    placeholder: "Rechercher...";
+    placeholder-color: #382E36;
+}
+
+listview {
+    lines: 8;
+    columns: 1;
+    fixed-height: true;
+}
+
+element {
+    padding: 8px;
+    border-radius: 6px;
+}
+
+element selected {
+    background-color: @accent;
+    text-color: @bg;
+}
