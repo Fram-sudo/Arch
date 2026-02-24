@@ -1,4 +1,4 @@
-// Dock.qml — Dock flottant auto-caché avec animation MacOS
+// Dock.qml
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
@@ -10,9 +10,9 @@ PanelWindow {
     anchors.left:   true
     anchors.right:  true
 
-    // Hauteur du panneau = hauteur max du dock (icône agrandie) + marge + zone trigger
     property int dockMaxHeight: Math.round((theme.dockHeight - 12) * 1.45) + 12
-    implicitHeight: dockMaxHeight + theme.barMargin + 40
+    // Hauteur = dock max + marge + juste assez pour le trait indicateur (8px)
+    implicitHeight: dockMaxHeight + theme.dockMargin + 8
 
     exclusionMode: ExclusionMode.Ignore
     aboveWindows:  true
@@ -20,31 +20,32 @@ PanelWindow {
 
     Theme { id: theme }
 
-    // ── État ──────────────────────────────────────────────────────────────
-    property bool revealed:      false   // dock en cours de révélation / caché
-    property bool fullyRevealed: false   // true seulement après fin d'animation
+    property bool revealed: false
 
-    // fullyRevealed passe à true après la durée de l'animation de glissement
-    onRevealedChanged: {
-        if (revealed) {
-            fullyRevealTimer.restart()
-        } else {
-            fullyRevealed = false
-        }
-    }
-    Timer {
-        id: fullyRevealTimer
-        interval: 300   // légèrement > durée animation (280ms)
-        onTriggered: root.fullyRevealed = true
+    // ── Trait indicateur style iPhone — centré, même largeur que le dock ─
+    Rectangle {
+        id: hintLine
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom:           parent.bottom
+        anchors.bottomMargin:     3
+        width:  dockBg.width * 1   // un peu plus court que le dock, plus élégant
+        height: 3
+        radius: 2
+        color:  Qt.rgba(226/255, 217/255, 224/255, 0.25)
+        visible: !root.revealed
+
+        // S'illumine légèrement quand le curseur s'approche
+        opacity: triggerZone.containsMouse ? 1.0 : 0.55
+        Behavior on opacity { NumberAnimation { duration: 200 } }
     }
 
-    // ── Zone de détection (toute la largeur de l'écran, bord bas) ────────
+    // ── Zone de détection — fine comme le trait, même largeur que le dock ─
     MouseArea {
         id: triggerZone
-        anchors.left:   parent.left
-        anchors.right:  parent.right
-        anchors.bottom: parent.bottom
-        height: 40   // zone confortable sur toute la largeur
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom:           parent.bottom
+        width:  dockBg.width       // largeur exacte du dock
+        height: 8                  // zone un peu plus haute que le trait pour faciliter le survol
         hoverEnabled: true
         propagateComposedEvents: true
         acceptedButtons: Qt.NoButton
@@ -58,107 +59,94 @@ PanelWindow {
         }
     }
 
-    // ── Timer masquage (délai pour éviter le clignotement) ────────────────
     Timer {
         id: hideTimer
         interval: 500
         onTriggered: root.revealed = false
     }
 
-    // ── Applications épinglées ────────────────────────────────────────────
-    // Se rendre à l'emplacement /usr/share/icons/Papirus pour trouver le nom de l'icone souhaité, et la remplacé dans la valeur iconName
-    property var apps: [
-        { name: "Fichiers",     iconName: "org.kde.dolphin",     cmd: ["dolphin"],             wmClass: "dolphin" },
-        { name: "Terminal",     iconName: "kitty",               cmd: ["kitty"],               wmClass: "kitty"   },
-        { name: "Firefox",      iconName: "firefox",             cmd: ["firefox"],             wmClass: "firefox" }
-        
-    ]
+    ListModel {
+        id: appsModel
+        ListElement { appName: "Fichiers";     iconName: "org.kde.dolphin";     cmd0: "dolphin"; cmd1: "";      cmd2: "";     wmClass: "dolphin" }
+        ListElement { appName: "Terminal";     iconName: "kitty";               cmd0: "kitty";   cmd1: "";      cmd2: "";     wmClass: "kitty"   }
+        ListElement { appName: "Firefox";      iconName: "firefox";             cmd0: "firefox"; cmd1: "";      cmd2: "";     wmClass: "firefox" }
+    }
 
-    // ── Îlot du dock ──────────────────────────────────────────────────────
-    Rectangle {
+    Item {
         id: dockBg
 
-        // Taille de base des items
-        property int itemSzBase: theme.dockHeight - 12   // ~32px
-        property int cnt:        root.apps.length
+        property int itemSzBase: theme.dockHeight - 12
+        property int itemSpacing: 8
+        property int cnt: appsModel.count
+        // Index en cours de drag (-1 = aucun)
+        property int dragIndex: -1
 
-        // Hauteur = taille max de l'icône agrandie + marge, pour ne pas couper
-        width:  cnt * itemSzBase + (cnt - 1) * 6 + 20
+        width:  cnt * itemSzBase + (cnt - 1) * itemSpacing + 20
         height: Math.round(itemSzBase * 1.45) + 12
-        radius: theme.dockRadius
-        clip:   false   // les icônes agrandies peuvent dépasser vers le haut
+        clip:   false
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom:           parent.bottom
-        anchors.bottomMargin:     root.revealed
-                                  ? theme.barMargin
-                                  : -(dockBg.height + 4)
+        anchors.bottomMargin:     root.revealed ? theme.dockMargin : -(dockBg.height + 4)
 
         Behavior on anchors.bottomMargin {
             NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
         }
 
-        color:        "transparent"
-        border.width: 0
-
-        // HoverHandler détecte le survol du dock sans interférer avec les clics
-        // Il fonctionne en parallèle des MouseArea des boutons (pas de vol d'événements)
         HoverHandler {
             id: dockSurface
             onHoveredChanged: {
-                if (hovered) {
-                    hideTimer.stop()
-                } else if (!triggerZone.containsMouse) {
-                    hideTimer.restart()
-                }
+                if (hovered)      hideTimer.stop()
+                else if (!triggerZone.containsMouse) hideTimer.restart()
             }
         }
 
         Row {
+            id: dockRow
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom:           parent.bottom
             anchors.bottomMargin:     8
-            spacing: 6
+            spacing: dockBg.itemSpacing
+
+            move: Transition {
+                NumberAnimation { property: "x"; duration: 180; easing.type: Easing.OutCubic }
+            }
 
             Repeater {
-                model: root.apps
+                model: appsModel
 
                 delegate: Item {
                     id: dockItem
-                    required property var modelData
-                    required property int index
 
-                    property bool isOpen: {
-                        if (!modelData.wmClass) return false
-                        var wins = Hyprland.windows.values
-                        for (var i = 0; i < wins.length; i++) {
-                            if (wins[i].resourceClass.toLowerCase() ===
-                                modelData.wmClass.toLowerCase()) return true
-                        }
-                        return false
-                    }
+                    property bool hovered:  false
+                    property bool dragging: dockBg.dragIndex === index
 
-                    property bool hovered: false
-
-                    // Seule la largeur change → pousse les voisins horizontalement
-                    // La hauteur reste fixe, l'icône grandit vers le haut via son ancrage
-                    property real targetSize: hovered
+                    property real targetSize: (hovered && !dragging)
                                               ? dockBg.itemSzBase * 1.45
                                               : dockBg.itemSzBase
 
                     width:  targetSize
-                    height: dockBg.itemSzBase   // hauteur fixe, pas d'animation verticale
+                    height: dockBg.itemSzBase
+                    z:      dragging ? 10 : 1
 
                     Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
-                    // Icône système — ancrée en bas, grandit vers le haut
+                    // L'icône suit le curseur via translation pendant le drag
+                    transform: Translate {
+                        x: dockItem.dragging ? dragHandler.activeTranslation.x : 0
+                        Behavior on x {
+                            enabled: !dockItem.dragging
+                            NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                        }
+                    }
+
                     Image {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottom:           parent.bottom
-                        anchors.bottomMargin:     dockItem.isOpen ? 5 : 2
+                        anchors.bottomMargin:     2
                         width:  dockItem.targetSize - 8
                         height: dockItem.targetSize - 8
-                        source:  Quickshell.iconPath(dockItem.modelData.iconName, true)
+                        source:  Quickshell.iconPath(iconName, true)
                         visible: source !== ""
                         smooth:  true
                         mipmap:  true
@@ -166,39 +154,70 @@ PanelWindow {
                         Behavior on height { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
                     }
 
-                    // Fallback : initiale si aucune icône trouvée
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottom:           parent.bottom
                         anchors.bottomMargin:     2
-                        text:    dockItem.modelData.name.charAt(0)
+                        text:    appName.charAt(0)
                         color:   theme.fg
                         font.family:    theme.font
                         font.pixelSize: dockItem.targetSize * 0.5
                         font.bold:      true
-                        visible: Quickshell.iconPath(dockItem.modelData.iconName, true) === ""
+                        visible: Quickshell.iconPath(iconName, true) === ""
                     }
 
-                    // Pastille rouge = app ouverte
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottom:           parent.bottom
                         anchors.bottomMargin:     1
-                        width:  dockItem.isOpen ? 10 : 0
-                        height: 3
-                        radius: 2
-                        color:  "#A32335"
+                        width: {
+                            if (!wmClass) return 0
+                            var wins = Hyprland.windows.values
+                            for (var i = 0; i < wins.length; i++)
+                                if (wins[i].resourceClass.toLowerCase() === wmClass.toLowerCase()) return 10
+                            return 0
+                        }
+                        height: 3; radius: 2; color: "#A32335"
                         Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                     }
 
+                    DragHandler {
+                        id: dragHandler
+                        xAxis.enabled: true
+                        yAxis.enabled: false
+
+                        onActiveChanged: {
+                            if (active) {
+                                dockBg.dragIndex = index
+                                dockItem.hovered = false
+                            } else {
+                                // Calcule le nouvel index depuis le déplacement X
+                                var step   = dockBg.itemSzBase + dockBg.itemSpacing
+                                var moved  = Math.round(dragHandler.activeTranslation.x / step)
+                                var newIdx = Math.max(0, Math.min(appsModel.count - 1, index + moved))
+                                if (newIdx !== index)
+                                    appsModel.move(index, newIdx, 1)
+                                dockBg.dragIndex = -1
+                            }
+                        }
+                    }
+
                     MouseArea {
-                        id: btnMa
                         anchors.fill: parent
                         hoverEnabled: true
-                        cursorShape:  Qt.PointingHandCursor
-                        onEntered:    dockItem.hovered = true
-                        onExited:     dockItem.hovered = false
-                        onClicked:    Quickshell.execDetached(dockItem.modelData.cmd)
+                        propagateComposedEvents: true
+                        cursorShape: dockItem.dragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+                        onEntered:  if (!dockItem.dragging) dockItem.hovered = true
+                        onExited:   dockItem.hovered = false
+                        onClicked: {
+                            if (!dockItem.dragging) {
+                                var c = []
+                                if (cmd0) c.push(cmd0)
+                                if (cmd1) c.push(cmd1)
+                                if (cmd2) c.push(cmd2)
+                                Quickshell.execDetached(c)
+                            }
+                        }
                     }
                 }
             }
