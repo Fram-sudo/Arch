@@ -25,7 +25,7 @@ QtObject {
     readonly property int barRadius:   10
     readonly property int barMargin:   2 // Pour monter/descendre la barre
     readonly property int dockMargin:  2 // dock du bas ↔ bord écran
-    readonly property int dockHeight:  52
+    readonly property int dockHeight:  50
     readonly property int dockRadius:  14
 
     // ── Typographie ───────────────────────────────────────────────────────
