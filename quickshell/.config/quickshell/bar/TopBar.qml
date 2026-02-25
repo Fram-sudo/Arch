@@ -5,7 +5,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
-import Quickshell.Services.Mpris
 import qs
 import qs.bar.popups
 
@@ -25,20 +24,20 @@ PanelWindow {
     // ── Popups ────────────────────────────────────────────────────────────
     property bool powerOpen:    false
     property bool calendarOpen: false
-    property bool mediaOpen:    false
-    property bool controlsOpen: false
+    property bool qsOpen:       false
 
-    PowerMenu    { id: powerMenuWin;  screen: root.screen; open: root.powerOpen;    onOpenChanged: root.powerOpen    = open }
-    CalendarPopup{
-        id: calendarWin;  screen: root.screen; open: root.calendarOpen
-        onOpenChanged: root.calendarOpen = open
+    PowerMenu {
+        id: powerMenuWin; screen: root.screen
+        open: root.powerOpen; onOpenChanged: root.powerOpen = open
+    }
+    CalendarPopup {
+        id: calendarWin; screen: root.screen
+        open: root.calendarOpen; onOpenChanged: root.calendarOpen = open
         clockCenterX: root.screen ? root.screen.width / 2 : 0
     }
-    MediaPopup   { id: mediaWin;      screen: root.screen; open: root.mediaOpen;    onOpenChanged: root.mediaOpen    = open }
-    ControlsPopup{
-        id: controlsWin;  screen: root.screen; open: root.controlsOpen
-        onOpenChanged: root.controlsOpen = open
-        buttonRightX: ctrlBtn.mapToItem(null, ctrlBtn.width, 0).x
+    QuickSettings {
+        id: qsWin; screen: root.screen
+        open: root.qsOpen; onOpenChanged: root.qsOpen = open
     }
 
     // Overlay plein écran — ferme tout au clic hors barre
@@ -46,37 +45,14 @@ PanelWindow {
         screen: root.screen
         anchors.top: true; anchors.left: true; anchors.right: true; anchors.bottom: true
         color: "transparent"; exclusionMode: ExclusionMode.Ignore; aboveWindows: false
-        visible: root.powerOpen || root.calendarOpen || root.mediaOpen || root.controlsOpen
+        visible: root.powerOpen || root.calendarOpen || root.qsOpen
         MouseArea { anchors.fill: parent; onClicked: root.closeAll() }
     }
 
-    function closeAll()        { powerOpen = false; calendarOpen = false; mediaOpen = false; controlsOpen = false }
+    function closeAll()        { powerOpen = false; calendarOpen = false; qsOpen = false }
     function togglePower()     { var v = !powerOpen;    closeAll(); powerOpen    = v }
     function toggleCalendar()  { var v = !calendarOpen; closeAll(); calendarOpen = v }
-    function toggleMedia()     { var v = !mediaOpen;    closeAll(); mediaOpen    = v }
-    function toggleControls()  { var v = !controlsOpen; closeAll(); controlsOpen = v }
-
-    // MPRIS
-    property var mprisPlayer: {
-        var players = Mpris.players.values
-        for (var i = 0; i < players.length; i++)
-            if (players[i].playbackState === MprisPlaybackState.Playing) return players[i]
-        return players.length > 0 ? players[0] : null
-    }
-    property bool   hasMedia:    mprisPlayer !== null
-    property string mediaTitle:  hasMedia && mprisPlayer.trackTitle ? mprisPlayer.trackTitle : ""
-    property string mediaSource: {
-        if (!hasMedia) return ""
-        // desktopEntry renvoie ex: "spotify", "firefox", "deezer"
-        var de = mprisPlayer.desktopEntry ? mprisPlayer.desktopEntry.toLowerCase() : ""
-        if (de) return de
-        // Fallback sur identity si desktopEntry est vide
-        var id = mprisPlayer.identity ? mprisPlayer.identity.toLowerCase() : ""
-        if (id.indexOf("spotify") >= 0) return "spotify"
-        if (id.indexOf("deezer")  >= 0) return "deezer"
-        if (id.indexOf("firefox") >= 0) return "firefox"
-        return ""
-    }
+    function toggleQs()        { var v = !qsOpen;       closeAll(); qsOpen       = v }
 
     // Volume (pour l'icône dans la barre)
     property var  pwSink:  Pipewire.defaultAudioSink
@@ -86,12 +62,6 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         color:        Theme.bg
-
-        // Liseré rouge bas
-        Rectangle {
-            anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
-            height: 0; color: Qt.rgba(163/255, 35/255, 53/255, 0.55)
-        }
 
         RowLayout {
             anchors.fill:         parent
@@ -105,7 +75,6 @@ PanelWindow {
             RowLayout {
                 spacing: 6
 
-                // Icône Arch → Rofi
                 Rectangle {
                     width: Theme.barHeight - 10; height: Theme.barHeight - 10; radius: 6
                     color: appMa.containsMouse ? Theme.bgHover : Qt.rgba(46/255,37/255,37/255,0.5)
@@ -120,7 +89,6 @@ PanelWindow {
                     }
                 }
 
-                // Conteneur workspaces
                 Rectangle {
                     height: Theme.barHeight - 12
                     width:  wsRow.implicitWidth + 12
@@ -131,7 +99,6 @@ PanelWindow {
                         id: wsRow
                         anchors.centerIn: parent
                         spacing: 5
-
                         property int activeWs: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
 
                         Repeater {
@@ -146,7 +113,6 @@ PanelWindow {
                                         if (ws[i].id === wsId) return true
                                     return false
                                 }
-
                                 width:  active ? 20 : 6
                                 height: Theme.barHeight - 12
                                 Behavior on width { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
@@ -168,7 +134,6 @@ PanelWindow {
                                     }
                                     onColorChanged: if (active) waveAnim.restart()
                                 }
-
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: Hyprland.dispatch("workspace " + wsId)
@@ -182,17 +147,15 @@ PanelWindow {
             Item { Layout.fillWidth: true }
             Item { Layout.fillWidth: true }
 
-            // ══ DROITE : icône volume/luminosité + power ══════════════════
+            // ══ DROITE : QuickSettings + Power ═══════════════════════════
             RowLayout {
                 spacing: 4
 
-                // Bouton contrôles (volume + luminosité)
+                // Bouton QuickSettings
                 Rectangle {
-                    id: ctrlBtn
                     width: Theme.barHeight - 10; height: Theme.barHeight - 10; radius: 5
-                    color: ctrlMa.containsMouse || root.controlsOpen ? Theme.bgHover : "transparent"
+                    color: qsMa.containsMouse || root.qsOpen ? Theme.bgHover : "transparent"
                     Behavior on color { ColorAnimation { duration: 120 } }
-
                     Text {
                         anchors.centerIn: parent
                         text: {
@@ -201,13 +164,13 @@ PanelWindow {
                             if (root.vol < 0.67) return "󰖀"
                             return "󰕾"
                         }
-                        color: root.controlsOpen ? Theme.red : (root.muted ? Theme.fgMuted : Theme.teal)
+                        color: root.qsOpen ? Theme.red : (root.muted ? Theme.fgMuted : Theme.teal)
                         font.family: Theme.font; font.pixelSize: Theme.iconSize
                         Behavior on color { ColorAnimation { duration: 120 } }
                     }
                     MouseArea {
-                        id: ctrlMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: root.toggleControls()
+                        id: qsMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: root.toggleQs()
                         onWheel: wheel => {
                             var d = wheel.angleDelta.y > 0 ? "5%+" : "5%-"
                             Quickshell.execDetached(["wpctl","set-volume","-l","1","@DEFAULT_AUDIO_SINK@",d])
@@ -231,83 +194,40 @@ PanelWindow {
             }
         }
 
-        // ══ CENTRE ancré absolument — parfaitement centré sur la barre ════
-        Row {
-            id: centreBlock
+        // ══ CENTRE — horloge ═════════════════════════════════════════════
+        Rectangle {
             anchors.centerIn: parent
-            spacing: 6
+            height: Theme.barHeight - 6
+            width:  clockRow.implicitWidth + 20
+            radius: 5
+            color:  clockMa.containsMouse || root.calendarOpen ? Theme.bgHover : "transparent"
+            Behavior on color { ColorAnimation { duration: 120 } }
 
-            // Heure + date cliquable
-            Rectangle {
-                id: clockContainer
-                height: Theme.barHeight - 6
-                width:  clockRow.implicitWidth + 20
-                radius: 5
-                color:  clockMa.containsMouse || root.calendarOpen ? Theme.bgHover : "transparent"
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                Row {
-                    id: clockRow
-                    anchors.centerIn: parent
-                    spacing: 8
-                    Text {
-                        text: root.currentTime
-                        color: root.calendarOpen ? Theme.red : Theme.fg
-                        font.family: Theme.font; font.pixelSize: Theme.fontSize; font.bold: true
-                        anchors.verticalCenter: parent.verticalCenter
-                        Behavior on color { ColorAnimation { duration: 150 } }
-                    }
-                    Rectangle {
-                        width: 1; height: Theme.barHeight - 18
-                        color: Qt.rgba(138/255,122/255,136/255,0.25)
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Text {
-                        text: root.currentDate; color: Theme.fgMuted
-                        font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
+            Row {
+                id: clockRow
+                anchors.centerIn: parent
+                spacing: 8
+                Text {
+                    text: root.currentTime
+                    color: root.calendarOpen ? Theme.red : Theme.fg
+                    font.family: Theme.font; font.pixelSize: Theme.fontSize; font.bold: true
+                    anchors.verticalCenter: parent.verticalCenter
+                    Behavior on color { ColorAnimation { duration: 150 } }
                 }
-                MouseArea {
-                    id: clockMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: root.toggleCalendar()
+                Rectangle {
+                    width: 1; height: Theme.barHeight - 18
+                    color: Qt.rgba(138/255,122/255,136/255,0.25)
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Text {
+                    text: root.currentDate; color: Theme.fgMuted
+                    font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
+                    anchors.verticalCenter: parent.verticalCenter
                 }
             }
-
-            // Bouton media (toujours visible, icône change selon le player)
-            Rectangle {
-                id: mediaBtn
-                height: Theme.barHeight - 8
-                width:  height
-                radius: 5
-                color:  mediaMa.containsMouse || root.mediaOpen ? Theme.bgHover : "transparent"
-                Behavior on color { ColorAnimation { duration: 120 } }
-
-                // Icône du player (Spotify, Deezer, Firefox…) via le thème d'icônes
-                Image {
-                    id: mediaIcon
-                    anchors.centerIn: parent
-                    width: Theme.iconSize; height: Theme.iconSize
-                    source: root.mediaSource !== "" ? Quickshell.iconPath(root.mediaSource, true) : ""
-                    visible: source !== ""
-                    smooth: true; mipmap: true
-                }
-
-                // Fallback : note de musique si aucune icône trouvée ou pas de player
-                Text {
-                    anchors.centerIn: parent
-                    visible: !mediaIcon.visible
-                    text: "󰎆"
-                    color: root.mediaOpen ? Theme.red : (root.hasMedia ? Theme.teal : Theme.fgMuted)
-                    font.family: Theme.font; font.pixelSize: Theme.iconSize
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                }
-
-                MouseArea {
-                    id: mediaMa; anchors.fill: parent
-                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: root.toggleMedia()
-                }
+            MouseArea {
+                id: clockMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onClicked: root.toggleCalendar()
             }
         }
     }
