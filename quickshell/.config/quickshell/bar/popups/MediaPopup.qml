@@ -1,4 +1,4 @@
-// MediaPopup.qml — Lecteur media (MPRIS : Spotify, Deezer, musique locale)
+// MediaPopup.qml — Lecteur media (MPRIS)
 import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
@@ -21,7 +21,6 @@ PanelWindow {
     aboveWindows:  true
     visible:       open
 
-    // Premier player MPRIS actif
     property var player: {
         var players = Mpris.players.values
         for (var i = 0; i < players.length; i++) {
@@ -36,102 +35,98 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         radius:       Theme.popupRadius
-        color:        Theme.bgPopup
-        border.color: Qt.rgba(163/255, 35/255, 53/255, 0.45)
-        border.width: 1
-        opacity:      win.open ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: 140 } }
+        color:        Theme.popupBg
+        border.color: Theme.popupBorder
+        border.width: Theme.popupBorderWidth
 
-        // ── Pas de player ─────────────────────────────────────────────────
-        Text {
-            anchors.centerIn: parent
-            visible: !win.hasPlayer
-            text:    "Aucun lecteur actif"
-            color:   Theme.fgMuted
-            font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
-            font.italic: true
+        opacity: win.open ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: Theme.popupAnimNormal } }
+
+        Rectangle {
+            z: 0
+            anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+            height: parent.height * Theme.popupGlossHeight; radius: parent.radius
+            gradient: Gradient {
+                orientation: Gradient.Vertical
+                GradientStop { position: 0.0; color: Theme.popupGlossTop }
+                GradientStop { position: 1.0; color: Theme.popupGlossBottom }
+            }
         }
 
-        // ── Player actif ──────────────────────────────────────────────────
-        Row {
-            anchors.fill:    parent
-            anchors.margins: 12
-            spacing:         12
-            visible:         win.hasPlayer
+        // Pas de player
+        Text {
+            z: 1; anchors.centerIn: parent
+            visible: !win.hasPlayer
+            text: "Aucun lecteur actif"
+            color: Theme.popupFgMuted
+            font.family: Theme.font; font.pixelSize: Theme.fontSizeSm; font.italic: true
+        }
 
-            // Pochette
+        // Player actif
+        Row {
+            z: 1
+            anchors.fill: parent; anchors.margins: 12
+            spacing: 12; visible: win.hasPlayer
+
             Rectangle {
-                width: 80; height: 80
-                radius: 6
-                color: Theme.bgHover
+                width: 80; height: 80; radius: 10
+                color: Theme.popupInnerBg
+                border.color: Theme.popupInnerBorder; border.width: 1
                 anchors.verticalCenter: parent.verticalCenter
 
                 Image {
-                    anchors.fill:    parent
-                    anchors.margins: 0
-                    source:  win.hasPlayer && win.player.artUrl ? win.player.artUrl : ""
+                    anchors.fill: parent
+                    source: win.hasPlayer && win.player.artUrl ? win.player.artUrl : ""
                     visible: source !== ""
                     fillMode: Image.PreserveAspectCrop
-                    layer.enabled: true
-                    layer.effect: null
+                    layer.enabled: true; layer.effect: null
                 }
-
                 Text {
                     anchors.centerIn: parent
                     visible: !win.hasPlayer || !win.player.artUrl
-                    text:    "♪"
-                    color:   Theme.fgMuted
-                    font.pixelSize: 28
+                    text: "♪"; color: Theme.popupFgMuted; font.pixelSize: 28
                 }
             }
 
-            // Infos + contrôles
             Column {
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 6
-                width:   win.implicitWidth - 80 - 36
+                spacing: 6; width: win.implicitWidth - 80 - 36
 
-                // Titre
                 Text {
-                    text:  win.hasPlayer && win.player.trackTitle ? win.player.trackTitle : "—"
-                    color: Theme.fg
+                    text: win.hasPlayer && win.player.trackTitle ? win.player.trackTitle : "—"
+                    color: Theme.popupFg
                     font.family: Theme.font; font.pixelSize: Theme.fontSizeSm; font.bold: true
                     width: parent.width; elide: Text.ElideRight
                 }
-
-                // Artiste
                 Text {
-                    text:  win.hasPlayer && win.player.trackArtists
-                           ? win.player.trackArtists.join(", ") : "—"
-                    color: Theme.fgMuted
+                    text: win.hasPlayer && win.player.trackArtists ? win.player.trackArtists.join(", ") : "—"
+                    color: Theme.popupFgMuted
                     font.family: Theme.font; font.pixelSize: Theme.fontSizeSm - 1
                     width: parent.width; elide: Text.ElideRight
                 }
 
-                // Contrôles
                 Row {
                     spacing: 16
-
                     Repeater {
                         model: [
-                            { icon: "⏮", action: "prev"  },
+                            { icon: "⏮", action: "prev" },
                             { icon: win.playing ? "⏸" : "⏵", action: "play" },
-                            { icon: "⏭", action: "next"  }
+                            { icon: "⏭", action: "next" }
                         ]
                         delegate: Text {
                             required property var modelData
-                            text:  modelData.icon
-                            color: ctrlMa.containsMouse ? Theme.red : Theme.fgMuted
+                            text: modelData.icon
+                            color: ctrlMa.containsMouse ? Theme.popupAccentBright : Theme.popupFgMuted
                             font.pixelSize: 18
-                            Behavior on color { ColorAnimation { duration: 100 } }
+                            Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
                             MouseArea {
                                 id: ctrlMa; anchors.fill: parent
                                 hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     if (!win.hasPlayer) return
-                                    if (modelData.action === "prev")  win.player.previous()
-                                    if (modelData.action === "play")  win.player.playPause()
-                                    if (modelData.action === "next")  win.player.next()
+                                    if (modelData.action === "prev") win.player.previous()
+                                    if (modelData.action === "play") win.player.playPause()
+                                    if (modelData.action === "next") win.player.next()
                                 }
                             }
                         }

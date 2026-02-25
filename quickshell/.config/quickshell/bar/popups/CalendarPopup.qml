@@ -4,7 +4,6 @@ import Quickshell
 import Quickshell.Io
 import qs
 
-
 PanelWindow {
     id: win
     property bool open:         false
@@ -75,78 +74,69 @@ PanelWindow {
         if (viewMonth === 12) { viewMonth = 1; viewYear++ } else viewMonth++
     }
 
-    // ── Fond glassmorphism principal ──────────────────────────────────────
+    // ── Fond glassmorphism ───────────────────────────────────────────────
     Rectangle {
         anchors.fill: parent
-        radius:       18
-        color:        Qt.rgba(22/255, 14/255, 32/255, 0.70)
-        border.color: Qt.rgba(1,1,1,0.10)
-        border.width: 1
-        clip:         true
+        radius:       Theme.popupRadius
+        color:        Theme.popupBg
+        border.color: Theme.popupBorder
+        border.width: Theme.popupBorderWidth
 
         opacity: win.open ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: 150 } }
+        Behavior on opacity { NumberAnimation { duration: Theme.popupAnimNormal } }
 
-        // Reflet glossy haut
+        // Reflet glossy (z:0 = derrière le contenu)
         Rectangle {
-            anchors.top:   parent.top
-            anchors.left:  parent.left
-            anchors.right: parent.right
-            height: parent.height * 0.45
+            z: 0
+            anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+            height: parent.height * Theme.popupGlossHeight
             radius: parent.radius
             gradient: Gradient {
                 orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: Qt.rgba(1,1,1,0.07) }
-                GradientStop { position: 1.0; color: Qt.rgba(1,1,1,0.00) }
+                GradientStop { position: 0.0; color: Theme.popupGlossTop }
+                GradientStop { position: 1.0; color: Theme.popupGlossBottom }
             }
         }
 
+        // ── Contenu interactif (z:1 = au-dessus du glossy) ──────────────
         Column {
-            anchors.fill:         parent
-            anchors.margins:      16
-            spacing:              12
+            z: 1
+            anchors.fill:    parent
+            anchors.margins: Theme.popupPadding + 2
+            spacing:         12
 
-            // ── En-tête : flèches + mois année ───────────────────────────
+            // ── En-tête : flèches + mois année ───────────────────────
             Item {
                 width: parent.width; height: 40
 
-                // Flèche gauche
                 Rectangle {
-                    anchors.left:           parent.left
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
                     width: 32; height: 32; radius: 9
-                    color: prevMa.containsMouse
-                           ? Qt.rgba(1,1,1,0.28)
-                           : Qt.rgba(1,1,1,0.10)
-                    border.color: prevMa.containsMouse ? Qt.rgba(1,1,1,0.35) : Qt.rgba(1,1,1,0.12)
+                    color: prevMa.containsMouse ? Theme.popupPressed : Theme.popupHover
+                    border.color: prevMa.containsMouse ? Theme.popupHoverBorder : Theme.popupBorder
                     border.width: 1
-                    Behavior on color { ColorAnimation { duration: 100 } }
-                    Behavior on border.color { ColorAnimation { duration: 100 } }
-
+                    Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.popupAnimFast } }
                     Text {
                         anchors.centerIn: parent; text: "<"
-                        color: "#FFFFFF"
+                        color: Theme.popupFg
                         font.pixelSize: 14; font.family: Theme.font; font.bold: true
                     }
                     MouseArea { id: prevMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.prevMonth() }
                 }
 
-                // Mois + année
                 Rectangle {
                     anchors.centerIn: parent
-                    width:  monthYearTxt.implicitWidth + 16
-                    height: 32; radius: 9
-                    color:  yearHoverMa.containsMouse ? Qt.rgba(1,1,1,0.28) : "transparent"
-                    border.color: yearHoverMa.containsMouse ? Qt.rgba(1,1,1,0.35) : "transparent"
+                    width: monthYearTxt.implicitWidth + 16; height: 32; radius: 9
+                    color: yearHoverMa.containsMouse ? Theme.popupPressed : "transparent"
+                    border.color: yearHoverMa.containsMouse ? Theme.popupHoverBorder : "transparent"
                     border.width: 1
-                    Behavior on color        { ColorAnimation { duration: 100 } }
-                    Behavior on border.color { ColorAnimation { duration: 100 } }
-
+                    Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.popupAnimFast } }
                     Text {
-                        id: monthYearTxt
-                        anchors.centerIn: parent
+                        id: monthYearTxt; anchors.centerIn: parent
                         text: win.monthNames[win.viewMonth - 1] + " " + win.viewYear
-                        color: "#FFFFFF"
+                        color: Theme.popupFg
                         font.family: Theme.font; font.pixelSize: 15; font.bold: true
                     }
                     MouseArea {
@@ -155,36 +145,30 @@ PanelWindow {
                     }
                 }
 
-                // Flèche droite
                 Rectangle {
-                    anchors.right:          parent.right
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                     width: 32; height: 32; radius: 9
-                    color: nextMa.containsMouse
-                           ? Qt.rgba(1,1,1,0.28)
-                           : Qt.rgba(1,1,1,0.10)
-                    border.color: nextMa.containsMouse ? Qt.rgba(1,1,1,0.35) : Qt.rgba(1,1,1,0.12)
+                    color: nextMa.containsMouse ? Theme.popupPressed : Theme.popupHover
+                    border.color: nextMa.containsMouse ? Theme.popupHoverBorder : Theme.popupBorder
                     border.width: 1
-                    Behavior on color { ColorAnimation { duration: 100 } }
-                    Behavior on border.color { ColorAnimation { duration: 100 } }
-
+                    Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+                    Behavior on border.color { ColorAnimation { duration: Theme.popupAnimFast } }
                     Text {
                         anchors.centerIn: parent; text: ">"
-                        color: "#FFFFFF"
+                        color: Theme.popupFg
                         font.pixelSize: 14; font.family: Theme.font; font.bold: true
                     }
                     MouseArea { id: nextMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.nextMonth() }
                 }
             }
 
-            // ── Sélecteur d'année ─────────────────────────────────────────
+            // ── Sélecteur d'année ────────────────────────────────────
             GridView {
-                width:   parent.width
-                height:  win.showYearPicker ? 160 : 0
+                width: parent.width
+                height: win.showYearPicker ? 160 : 0
                 visible: win.showYearPicker
-                clip:    true
-                cellWidth:  parent.width / 4
-                cellHeight: 38
+                clip: true
+                cellWidth: parent.width / 4; cellHeight: 38
                 model: 24
                 property int startYear: win.todayYear - 6
                 Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
@@ -193,13 +177,11 @@ PanelWindow {
                     required property int index
                     property int yr: GridView.view.startYear + index
                     width: GridView.view.cellWidth; height: GridView.view.cellHeight
-
                     Rectangle {
                         anchors.fill: parent; anchors.margins: 4; radius: 8
-                        color: yr === win.viewYear ? Qt.rgba(163/255,35/255,53/255,0.55)
-                             : yrMa.containsMouse  ? Qt.rgba(1,1,1,0.10)
-                             : "transparent"
-                        Behavior on color { ColorAnimation { duration: 80 } }
+                        color: yr === win.viewYear ? Theme.popupAccent
+                             : yrMa.containsMouse  ? Theme.popupHover : "transparent"
+                        Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
                         Text {
                             anchors.centerIn: parent; text: parent.parent.yr
                             color: yr === win.viewYear ? "#fff" : Qt.rgba(1,1,1, yr === win.todayYear ? 0.9 : 0.55)
@@ -213,117 +195,96 @@ PanelWindow {
                 }
             }
 
-            // ── Cadre semi-transparent encadrant toute la grille ──────────
+            // ── Cadre grille ─────────────────────────────────────────
             Rectangle {
-                visible:      !win.showYearPicker
-                width:        parent.width
-                height:       24 + 1 + win.gridRows * win.cellH + 14
-                radius:       12
-                color:        Qt.rgba(1,1,1,0.07)
-                border.color: Qt.rgba(1,1,1,0.10)
-                border.width: 1
+                visible: !win.showYearPicker
+                width: parent.width
+                height: 24 + 1 + win.gridRows * win.cellH + 14
+                radius: Theme.popupInnerRadius
+                color: Theme.popupInnerBg
+                border.color: Theme.popupInnerBorder; border.width: 1
 
                 Column {
-                    anchors.fill:         parent
-                    anchors.topMargin:    8
-                    anchors.leftMargin:   8
-                    anchors.rightMargin:  8
-                    anchors.bottomMargin: 6
+                    anchors.fill: parent
+                    anchors.topMargin: 8; anchors.leftMargin: 8
+                    anchors.rightMargin: 8; anchors.bottomMargin: 6
                     spacing: 0
 
-                    // Labels jours semaine
                     Row {
                         width: parent.width
                         Repeater {
                             model: win.dayNames
                             Text {
                                 required property string modelData
-                                width:  win.cellW; height: 24
-                                text:   modelData
-                                color:  Qt.rgba(1,1,1,0.40)
+                                width: win.cellW; height: 24; text: modelData
+                                color: Theme.popupFgMuted
                                 font.pixelSize: 12; font.family: Theme.font; font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment:   Text.AlignVCenter
+                                verticalAlignment: Text.AlignVCenter
                             }
                         }
                     }
 
-                    // Séparateur
-                    Rectangle {
-                        width: parent.width; height: 1
-                        color: Qt.rgba(1,1,1,0.08)
-                    }
+                    Rectangle { width: parent.width; height: 1; color: Theme.popupSeparator }
 
-                    // Grille
                     Item {
-                        width:  parent.width
-                        height: win.gridRows * win.cellH
+                        width: parent.width; height: win.gridRows * win.cellH
 
-                        // Jours mois précédent (grisés)
                         Repeater {
                             model: win.firstDay
                             delegate: Item {
                                 required property int index
-                                x: index * win.cellW
-                                y: 0
+                                x: index * win.cellW; y: 0
                                 width: win.cellW; height: win.cellH
-
                                 Text {
                                     anchors.centerIn: parent
-                                    text:  win.dimPrev - win.firstDay + 1 + index
-                                    color: Qt.rgba(1,1,1,0.18)
+                                    text: win.dimPrev - win.firstDay + 1 + index
+                                    color: Theme.popupFgDim
                                     font.pixelSize: 14; font.family: Theme.font
                                 }
                             }
                         }
 
-                        // Jours mois courant
                         Repeater {
                             model: win.dimCurrent
                             delegate: Item {
                                 required property int index
-                                property int offset:     win.firstDay + index
-                                property int col:        offset % 7
-                                property int row:        Math.floor(offset / 7)
-                                property int day:        index + 1
-                                property bool isToday:   day === win.todayDay && win.viewMonth === win.todayMonth && win.viewYear === win.todayYear
-                                property bool isSelected:day === win.selectedDay && win.viewMonth === win.selectedMonth && win.viewYear === win.selectedYear
+                                property int offset: win.firstDay + index
+                                property int col: offset % 7
+                                property int row: Math.floor(offset / 7)
+                                property int day: index + 1
+                                property bool isToday: day === win.todayDay && win.viewMonth === win.todayMonth && win.viewYear === win.todayYear
+                                property bool isSelected: day === win.selectedDay && win.viewMonth === win.selectedMonth && win.viewYear === win.selectedYear
                                 property bool isWeekend: col >= 5
 
-                                x: col * win.cellW
-                                y: row * win.cellH
-                                width:  win.cellW
-                                height: win.cellH
+                                x: col * win.cellW; y: row * win.cellH
+                                width: win.cellW; height: win.cellH
 
                                 Rectangle {
                                     anchors.centerIn: parent
                                     width: 32; height: 32; radius: 9
-                                    color: isSelected ? Qt.rgba(1,1,1,0.28)
-                                         : isToday    ? Qt.rgba(163/255,35/255,53/255,0.65)
-                                         : dayMa.containsMouse ? Qt.rgba(1,1,1,0.10)
+                                    color: isSelected ? Theme.popupPressed
+                                         : isToday ? Theme.popupAccentBright
+                                         : dayMa.containsMouse ? Theme.popupHover
                                          : "transparent"
-                                    border.color: isSelected ? Qt.rgba(1,1,1,0.25) : "transparent"
+                                    border.color: isSelected ? Theme.popupHoverBorder : "transparent"
                                     border.width: isSelected ? 1 : 0
-                                    Behavior on color { ColorAnimation { duration: 80 } }
-
+                                    Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
                                     Text {
-                                        anchors.centerIn: parent
-                                        text:  parent.parent.day
+                                        anchors.centerIn: parent; text: parent.parent.day
                                         color: isSelected || isToday ? "#fff"
-                                             : isWeekend ? Qt.rgba(1,1,1,0.42)
-                                             : Qt.rgba(1,1,1,0.88)
+                                             : isWeekend ? Theme.popupFgMuted : Theme.popupFg
                                         font.pixelSize: 14; font.family: Theme.font
                                         font.bold: isToday || isSelected
                                     }
                                 }
-
                                 MouseArea {
                                     id: dayMa; anchors.fill: parent
                                     hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        win.selectedDay   = day
+                                        win.selectedDay = day
                                         win.selectedMonth = win.viewMonth
-                                        win.selectedYear  = win.viewYear
+                                        win.selectedYear = win.viewYear
                                     }
                                 }
                             }

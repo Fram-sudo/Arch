@@ -1,4 +1,4 @@
-// PowerMenu.qml — Popup power (PanelWindow séparé)
+// PowerMenu.qml — Popup power
 import QtQuick
 import Quickshell
 import qs
@@ -20,52 +20,62 @@ PanelWindow {
     aboveWindows:  true
     visible:       open
 
+    property var entries: [
+        { label: "Éteindre",    icon: "⏻", cmd: ["systemctl","poweroff"]  },
+        { label: "Redémarrer",  icon: "↺", cmd: ["systemctl","reboot"]    },
+        { label: "Verrouiller", icon: "󰌾", cmd: ["hyprlock"]              },
+        { label: "Veille",      icon: "⏾", cmd: ["systemctl","suspend"]   }
+    ]
+
     Rectangle {
         anchors.fill: parent
         radius:       Theme.popupRadius
-        color:        Theme.bgPopup
-        border.color: Qt.rgba(163/255, 35/255, 53/255, 0.5)
-        border.width: 1
+        color:        Theme.popupBg
+        border.color: Theme.popupBorder
+        border.width: Theme.popupBorderWidth
 
-        opacity:      win.open ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: 140 } }
+        opacity: win.open ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: Theme.popupAnimNormal } }
 
-        property var entries: [
-            { label: "Éteindre",    icon: "⏻", cmd: ["systemctl","poweroff"]  },
-            { label: "Redémarrer",  icon: "↺", cmd: ["systemctl","reboot"]    },
-            { label: "Verrouiller", icon: "󰌾", cmd: ["hyprlock"]              },
-            { label: "Veille",      icon: "⏾", cmd: ["systemctl","suspend"]   }
-        ]
+        Rectangle {
+            z: 0
+            anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+            height: parent.height * Theme.popupGlossHeight; radius: parent.radius
+            gradient: Gradient {
+                orientation: Gradient.Vertical
+                GradientStop { position: 0.0; color: Theme.popupGlossTop }
+                GradientStop { position: 1.0; color: Theme.popupGlossBottom }
+            }
+        }
 
         Column {
-            anchors.fill:    parent
-            anchors.margins: 5
-            spacing:         2
+            z: 1
+            anchors.fill: parent; anchors.margins: 8
+            spacing: 2
 
             Repeater {
-                model: parent.parent.entries
+                model: win.entries
                 delegate: Rectangle {
                     required property var modelData
-                    width:  148; height: 36; radius: 7
-                    color:  ma.containsMouse ? Theme.red : "transparent"
-                    Behavior on color { ColorAnimation { duration: 100 } }
+                    width: parent.width; height: 36; radius: 9
+                    color: ma.containsMouse ? Theme.popupAccentBright : "transparent"
+                    Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
 
                     Row {
                         anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                        anchors.leftMargin: 12
+                        anchors.left: parent.left; anchors.leftMargin: 12
                         spacing: 10
                         Text {
                             text: modelData.icon
-                            color: ma.containsMouse ? "#fff" : Theme.red
+                            color: ma.containsMouse ? "#fff" : Theme.popupAccent
                             font.family: Theme.font; font.pixelSize: Theme.fontSizeSm + 1
-                            Behavior on color { ColorAnimation { duration: 100 } }
+                            Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
                         }
                         Text {
                             text: modelData.label
-                            color: ma.containsMouse ? "#fff" : Theme.fg
+                            color: ma.containsMouse ? "#fff" : Theme.popupFg
                             font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
-                            Behavior on color { ColorAnimation { duration: 100 } }
+                            Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
                         }
                     }
                     MouseArea {

@@ -45,7 +45,7 @@ PanelWindow {
     PanelWindow {
         screen: root.screen
         anchors.top: true; anchors.left: true; anchors.right: true; anchors.bottom: true
-        color: "transparent"; exclusionMode: ExclusionMode.Ignore
+        color: "transparent"; exclusionMode: ExclusionMode.Ignore; aboveWindows: false
         visible: root.powerOpen || root.calendarOpen || root.mediaOpen || root.controlsOpen
         MouseArea { anchors.fill: parent; onClicked: root.closeAll() }
     }
@@ -63,8 +63,20 @@ PanelWindow {
             if (players[i].playbackState === MprisPlaybackState.Playing) return players[i]
         return players.length > 0 ? players[0] : null
     }
-    property bool   hasMedia:   mprisPlayer !== null
-    property string mediaTitle: hasMedia && mprisPlayer.trackTitle ? mprisPlayer.trackTitle : ""
+    property bool   hasMedia:    mprisPlayer !== null
+    property string mediaTitle:  hasMedia && mprisPlayer.trackTitle ? mprisPlayer.trackTitle : ""
+    property string mediaSource: {
+        if (!hasMedia) return ""
+        // desktopEntry renvoie ex: "spotify", "firefox", "deezer"
+        var de = mprisPlayer.desktopEntry ? mprisPlayer.desktopEntry.toLowerCase() : ""
+        if (de) return de
+        // Fallback sur identity si desktopEntry est vide
+        var id = mprisPlayer.identity ? mprisPlayer.identity.toLowerCase() : ""
+        if (id.indexOf("spotify") >= 0) return "spotify"
+        if (id.indexOf("deezer")  >= 0) return "deezer"
+        if (id.indexOf("firefox") >= 0) return "firefox"
+        return ""
+    }
 
     // Volume (pour l'icône dans la barre)
     property var  pwSink:  Pipewire.defaultAudioSink
@@ -262,30 +274,40 @@ PanelWindow {
                 }
             }
 
-            // Media (si player actif)
+            // Bouton media (toujours visible, icône change selon le player)
             Rectangle {
-                visible: root.hasMedia
-                height:  Theme.barHeight - 8
-                width:   mediaTxt.implicitWidth + 24
-                radius:  5
-                color:   mediaMa.containsMouse || root.mediaOpen ? Theme.bgHover : "transparent"
+                id: mediaBtn
+                height: Theme.barHeight - 8
+                width:  height
+                radius: 5
+                color:  mediaMa.containsMouse || root.mediaOpen ? Theme.bgHover : "transparent"
                 Behavior on color { ColorAnimation { duration: 120 } }
-                Row {
-                    anchors.centerIn: parent; spacing: 5
-                    Text {
-                        text: "♪"; color: Theme.teal
-                        font.family: Theme.font; font.pixelSize: Theme.iconSize
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Text {
-                        id: mediaTxt
-                        text: root.mediaTitle.length > 28 ? root.mediaTitle.substring(0,25)+"…" : root.mediaTitle
-                        color: root.mediaOpen ? Theme.fg : Theme.fgMuted
-                        font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
+
+                // Icône du player (Spotify, Deezer, Firefox…) via le thème d'icônes
+                Image {
+                    id: mediaIcon
+                    anchors.centerIn: parent
+                    width: Theme.iconSize; height: Theme.iconSize
+                    source: root.mediaSource !== "" ? Quickshell.iconPath(root.mediaSource, true) : ""
+                    visible: source !== ""
+                    smooth: true; mipmap: true
                 }
-                MouseArea { id: mediaMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleMedia() }
+
+                // Fallback : note de musique si aucune icône trouvée ou pas de player
+                Text {
+                    anchors.centerIn: parent
+                    visible: !mediaIcon.visible
+                    text: "󰎆"
+                    color: root.mediaOpen ? Theme.red : (root.hasMedia ? Theme.teal : Theme.fgMuted)
+                    font.family: Theme.font; font.pixelSize: Theme.iconSize
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                }
+
+                MouseArea {
+                    id: mediaMa; anchors.fill: parent
+                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: root.toggleMedia()
+                }
             }
         }
     }

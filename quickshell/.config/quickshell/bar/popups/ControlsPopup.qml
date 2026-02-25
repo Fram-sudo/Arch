@@ -23,7 +23,6 @@ PanelWindow {
     aboveWindows:  true
     visible:       open
 
-    // Luminosité via brightnessctl
     property bool brightnessAvailable: true
     property real brightness: 0.5
 
@@ -67,28 +66,36 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         radius:       Theme.popupRadius
-        color:        Theme.bgPopup
-        border.color: Qt.rgba(163/255, 35/255, 53/255, 0.45)
-        border.width: 1
-        opacity:      win.open ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: 140 } }
+        color:        Theme.popupBg
+        border.color: Theme.popupBorder
+        border.width: Theme.popupBorderWidth
+
+        opacity: win.open ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: Theme.popupAnimNormal } }
+
+        Rectangle {
+            z: 0
+            anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+            height: parent.height * Theme.popupGlossHeight; radius: parent.radius
+            gradient: Gradient {
+                orientation: Gradient.Vertical
+                GradientStop { position: 0.0; color: Theme.popupGlossTop }
+                GradientStop { position: 1.0; color: Theme.popupGlossBottom }
+            }
+        }
 
         Column {
-            anchors.fill:    parent
-            anchors.margins: 14
-            spacing:         14
+            z: 1
+            anchors.fill: parent; anchors.margins: Theme.popupPadding
+            spacing: 14
 
-            // ── Volume ────────────────────────────────────────────────────
             Row {
-                width:  parent.width
-                height: 20
-                spacing: 10
+                width: parent.width; height: 20; spacing: 10
 
                 property var  sink:  Pipewire.defaultAudioSink
                 property real vol:   sink && sink.audio ? sink.audio.volume : 0
                 property bool muted: sink && sink.audio ? sink.audio.muted  : false
 
-                // Icône volume (clic = mute)
                 Text {
                     text: {
                         if (parent.muted || parent.vol < 0.01) return "󰖁"
@@ -96,7 +103,7 @@ PanelWindow {
                         if (parent.vol < 0.67) return "󰖀"
                         return "󰕾"
                     }
-                    color:  parent.muted ? Theme.fgMuted : Theme.teal
+                    color: parent.muted ? Theme.popupFgMuted : Theme.teal
                     font.family: Theme.font; font.pixelSize: Theme.iconSize
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
@@ -105,23 +112,19 @@ PanelWindow {
                     }
                 }
 
-                // Barre de progression cliquable
                 Item {
-                    width:  parent.width - 36 - 10
-                    height: parent.height
+                    width: parent.width - 36 - 10; height: parent.height
                     anchors.verticalCenter: parent.verticalCenter
-
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width; height: 4; radius: 2
-                        color: Theme.bgHover
+                        width: parent.width; height: 4; radius: 2; color: Theme.popupInnerBg
                     }
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
-                        width:  Math.max(4, parent.width * (parent.parent.muted ? 0 : parent.parent.vol))
+                        width: Math.max(4, parent.width * (parent.parent.muted ? 0 : parent.parent.vol))
                         height: 4; radius: 2
-                        color:  parent.parent.muted ? Theme.fgDim : Theme.teal
-                        Behavior on width { NumberAnimation { duration: 80 } }
+                        color: parent.parent.muted ? Theme.popupFgDim : Theme.teal
+                        Behavior on width { NumberAnimation { duration: Theme.popupAnimFast } }
                     }
                     MouseArea {
                         anchors.fill: parent
@@ -138,59 +141,48 @@ PanelWindow {
                     }
                 }
 
-                // Valeur
                 Text {
-                    text:  Math.round(parent.vol * 100) + "%"
-                    color: Theme.fgMuted; font.family: Theme.font; font.pixelSize: 10
+                    text: Math.round(parent.vol * 100) + "%"
+                    color: Theme.popupFgMuted; font.family: Theme.font; font.pixelSize: 10
                     width: 26; horizontalAlignment: Text.AlignRight
                     anchors.verticalCenter: parent.verticalCenter
                     opacity: parent.muted ? 0.35 : 1.0
                 }
             }
 
-            // ── Luminosité ────────────────────────────────────────────────
             Row {
                 visible: win.brightnessAvailable
-                width:   parent.width
-                height:  20
-                spacing: 10
+                width: parent.width; height: 20; spacing: 10
 
                 Text {
-                    text:  "󰃞"
-                    color: Theme.gold
+                    text: "󰃞"; color: Theme.gold
                     font.family: Theme.font; font.pixelSize: Theme.iconSize
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
                 Item {
-                    width:  parent.width - 36 - 10
-                    height: parent.height
+                    width: parent.width - 36 - 10; height: parent.height
                     anchors.verticalCenter: parent.verticalCenter
-
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width; height: 4; radius: 2
-                        color: Theme.bgHover
+                        width: parent.width; height: 4; radius: 2; color: Theme.popupInnerBg
                     }
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
-                        width:  Math.max(4, parent.width * win.brightness)
-                        height: 4; radius: 2
-                        color:  Theme.gold
-                        Behavior on width { NumberAnimation { duration: 80 } }
+                        width: Math.max(4, parent.width * win.brightness)
+                        height: 4; radius: 2; color: Theme.gold
+                        Behavior on width { NumberAnimation { duration: Theme.popupAnimFast } }
                     }
                     MouseArea {
                         anchors.fill: parent
                         onClicked: mouse => win.setBrightness(mouse.x / width)
-                        onPositionChanged: mouse => {
-                            if (pressed) win.setBrightness(mouse.x / width)
-                        }
+                        onPositionChanged: mouse => { if (pressed) win.setBrightness(mouse.x / width) }
                     }
                 }
 
                 Text {
-                    text:  Math.round(win.brightness * 100) + "%"
-                    color: Theme.fgMuted; font.family: Theme.font; font.pixelSize: 10
+                    text: Math.round(win.brightness * 100) + "%"
+                    color: Theme.popupFgMuted; font.family: Theme.font; font.pixelSize: 10
                     width: 26; horizontalAlignment: Text.AlignRight
                     anchors.verticalCenter: parent.verticalCenter
                 }
