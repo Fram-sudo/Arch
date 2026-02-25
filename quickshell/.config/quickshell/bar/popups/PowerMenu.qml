@@ -1,6 +1,7 @@
 // PowerMenu.qml — Popup power (PanelWindow séparé)
 import QtQuick
 import Quickshell
+import qs
 
 PanelWindow {
     id: win
@@ -8,7 +9,7 @@ PanelWindow {
 
     anchors.top:   true
     anchors.right: true
-    margins.top:   theme.barHeight + 4
+    margins.top:   Theme.barHeight + 4
     margins.right: 4
 
     implicitWidth:  160
@@ -19,12 +20,10 @@ PanelWindow {
     aboveWindows:  true
     visible:       open
 
-    Theme { id: theme }
-
     Rectangle {
         anchors.fill: parent
-        radius:       theme.popupRadius
-        color:        theme.bgPopup
+        radius:       Theme.popupRadius
+        color:        Theme.bgPopup
         border.color: Qt.rgba(163/255, 35/255, 53/255, 0.5)
         border.width: 1
 
@@ -48,7 +47,7 @@ PanelWindow {
                 delegate: Rectangle {
                     required property var modelData
                     width:  148; height: 36; radius: 7
-                    color:  ma.containsMouse ? theme.red : "transparent"
+                    color:  ma.containsMouse ? Theme.red : "transparent"
                     Behavior on color { ColorAnimation { duration: 100 } }
 
                     Row {
@@ -58,14 +57,14 @@ PanelWindow {
                         spacing: 10
                         Text {
                             text: modelData.icon
-                            color: ma.containsMouse ? "#fff" : theme.red
-                            font.family: theme.font; font.pixelSize: theme.fontSizeSm + 1
+                            color: ma.containsMouse ? "#fff" : Theme.red
+                            font.family: Theme.font; font.pixelSize: Theme.fontSizeSm + 1
                             Behavior on color { ColorAnimation { duration: 100 } }
                         }
                         Text {
                             text: modelData.label
-                            color: ma.containsMouse ? "#fff" : theme.fg
-                            font.family: theme.font; font.pixelSize: theme.fontSizeSm
+                            color: ma.containsMouse ? "#fff" : Theme.fg
+                            font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
                             Behavior on color { ColorAnimation { duration: 100 } }
                         }
                     }

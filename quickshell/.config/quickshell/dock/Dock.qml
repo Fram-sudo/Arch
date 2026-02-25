@@ -2,6 +2,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import qs
 
 PanelWindow {
     id: root
@@ -10,42 +11,38 @@ PanelWindow {
     anchors.left:   true
     anchors.right:  true
 
-    property int dockMaxHeight: Math.round((theme.dockHeight - 12) * 1.45) + 12
-    // Hauteur = dock max + marge + juste assez pour le trait indicateur (8px)
-    implicitHeight: dockMaxHeight + theme.dockMargin + 8
+    property int dockMaxHeight: Math.round((Theme.dockHeight - 12) * 1.45) + 12
+    implicitHeight: dockMaxHeight + Theme.dockMargin + 8
 
     exclusionMode: ExclusionMode.Ignore
     aboveWindows:  true
     color:         "transparent"
 
-    Theme { id: theme }
-
     property bool revealed: false
 
-    // ── Trait indicateur style iPhone — centré, même largeur que le dock ─
+    // ── Trait indicateur style iPhone ─────────────────────────────────────
     Rectangle {
         id: hintLine
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom:           parent.bottom
         anchors.bottomMargin:     3
-        width:  dockBg.width * 1   // un peu plus court que le dock, plus élégant
+        width:  dockBg.width * 1
         height: 5
         radius: 2
         color:  Qt.rgba(226/255, 217/255, 224/255, 0.25)
         visible: !root.revealed
 
-        // S'illumine légèrement quand le curseur s'approche
         opacity: triggerZone.containsMouse ? 1.0 : 0.55
         Behavior on opacity { NumberAnimation { duration: 200 } }
     }
 
-    // ── Zone de détection — fine comme le trait, même largeur que le dock ─
+    // ── Zone de détection ────────────────────────────────────────────────
     MouseArea {
         id: triggerZone
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom:           parent.bottom
-        width:  dockBg.width       // largeur exacte du dock
-        height: 8                  // zone un peu plus haute que le trait pour faciliter le survol
+        width:  dockBg.width
+        height: 8
         hoverEnabled: true
         propagateComposedEvents: true
         acceptedButtons: Qt.NoButton
@@ -75,10 +72,9 @@ PanelWindow {
     Item {
         id: dockBg
 
-        property int itemSzBase: theme.dockHeight - 12
+        property int itemSzBase: Theme.dockHeight - 12
         property int itemSpacing: 8
         property int cnt: appsModel.count
-        // Index en cours de drag (-1 = aucun)
         property int dragIndex: -1
 
         width:  cnt * itemSzBase + (cnt - 1) * itemSpacing + 20
@@ -87,7 +83,7 @@ PanelWindow {
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom:           parent.bottom
-        anchors.bottomMargin:     root.revealed ? theme.dockMargin : -(dockBg.height + 4)
+        anchors.bottomMargin:     root.revealed ? Theme.dockMargin : -(dockBg.height + 4)
 
         Behavior on anchors.bottomMargin {
             NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
@@ -131,7 +127,6 @@ PanelWindow {
 
                     Behavior on width { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
-                    // L'icône suit le curseur via translation pendant le drag
                     transform: Translate {
                         x: dockItem.dragging ? dragHandler.activeTranslation.x : 0
                         Behavior on x {
@@ -159,8 +154,8 @@ PanelWindow {
                         anchors.bottom:           parent.bottom
                         anchors.bottomMargin:     2
                         text:    appName.charAt(0)
-                        color:   theme.fg
-                        font.family:    theme.font
+                        color:   Theme.fg
+                        font.family:    Theme.font
                         font.pixelSize: dockItem.targetSize * 0.5
                         font.bold:      true
                         visible: Quickshell.iconPath(iconName, true) === ""
@@ -191,7 +186,6 @@ PanelWindow {
                                 dockBg.dragIndex = index
                                 dockItem.hovered = false
                             } else {
-                                // Calcule le nouvel index depuis le déplacement X
                                 var step   = dockBg.itemSzBase + dockBg.itemSpacing
                                 var moved  = Math.round(dragHandler.activeTranslation.x / step)
                                 var newIdx = Math.max(0, Math.min(appsModel.count - 1, index + moved))

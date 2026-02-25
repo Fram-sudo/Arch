@@ -2,6 +2,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
+import qs
 
 PanelWindow {
     id: win
@@ -9,7 +10,7 @@ PanelWindow {
 
     anchors.top:  true
     anchors.left: true
-    margins.top:  theme.barHeight + 4
+    margins.top:  Theme.barHeight + 4
     margins.left: screen ? (screen.width - implicitWidth) / 2 : 0
 
     implicitWidth:  320
@@ -19,8 +20,6 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     aboveWindows:  true
     visible:       open
-
-    Theme { id: theme }
 
     // Premier player MPRIS actif
     property var player: {
@@ -36,8 +35,8 @@ PanelWindow {
 
     Rectangle {
         anchors.fill: parent
-        radius:       theme.popupRadius
-        color:        theme.bgPopup
+        radius:       Theme.popupRadius
+        color:        Theme.bgPopup
         border.color: Qt.rgba(163/255, 35/255, 53/255, 0.45)
         border.width: 1
         opacity:      win.open ? 1.0 : 0.0
@@ -48,8 +47,8 @@ PanelWindow {
             anchors.centerIn: parent
             visible: !win.hasPlayer
             text:    "Aucun lecteur actif"
-            color:   theme.fgMuted
-            font.family: theme.font; font.pixelSize: theme.fontSizeSm
+            color:   Theme.fgMuted
+            font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
             font.italic: true
         }
 
@@ -64,7 +63,7 @@ PanelWindow {
             Rectangle {
                 width: 80; height: 80
                 radius: 6
-                color: theme.bgHover
+                color: Theme.bgHover
                 anchors.verticalCenter: parent.verticalCenter
 
                 Image {
@@ -81,7 +80,7 @@ PanelWindow {
                     anchors.centerIn: parent
                     visible: !win.hasPlayer || !win.player.artUrl
                     text:    "♪"
-                    color:   theme.fgMuted
+                    color:   Theme.fgMuted
                     font.pixelSize: 28
                 }
             }
@@ -95,8 +94,8 @@ PanelWindow {
                 // Titre
                 Text {
                     text:  win.hasPlayer && win.player.trackTitle ? win.player.trackTitle : "—"
-                    color: theme.fg
-                    font.family: theme.font; font.pixelSize: theme.fontSizeSm; font.bold: true
+                    color: Theme.fg
+                    font.family: Theme.font; font.pixelSize: Theme.fontSizeSm; font.bold: true
                     width: parent.width; elide: Text.ElideRight
                 }
 
@@ -104,8 +103,8 @@ PanelWindow {
                 Text {
                     text:  win.hasPlayer && win.player.trackArtists
                            ? win.player.trackArtists.join(", ") : "—"
-                    color: theme.fgMuted
-                    font.family: theme.font; font.pixelSize: theme.fontSizeSm - 1
+                    color: Theme.fgMuted
+                    font.family: Theme.font; font.pixelSize: Theme.fontSizeSm - 1
                     width: parent.width; elide: Text.ElideRight
                 }
 
@@ -122,7 +121,7 @@ PanelWindow {
                         delegate: Text {
                             required property var modelData
                             text:  modelData.icon
-                            color: ctrlMa.containsMouse ? theme.red : theme.fgMuted
+                            color: ctrlMa.containsMouse ? Theme.red : Theme.fgMuted
                             font.pixelSize: 18
                             Behavior on color { ColorAnimation { duration: 100 } }
                             MouseArea {

@@ -2,6 +2,8 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs
+
 
 PanelWindow {
     id: win
@@ -10,13 +12,13 @@ PanelWindow {
 
     anchors.top:  true
     anchors.left: true
-    margins.top:  theme.barHeight + 6
+    margins.top:  Theme.barHeight + 6
     margins.left: Math.max(4, clockCenterX - implicitWidth / 2)
 
     implicitWidth:  340
 
     property int cellH:      38
-    property int cellW:      Math.floor(300 / 7)   // 300 = largeur intérieure du cadre
+    property int cellW:      Math.floor(300 / 7)
     property int firstDay:   (new Date(viewYear, viewMonth-1, 1).getDay() + 6) % 7
     property int dimCurrent: new Date(viewYear, viewMonth, 0).getDate()
     property int dimPrev:    new Date(viewMonth === 1 ? viewYear-1 : viewYear,
@@ -34,8 +36,6 @@ PanelWindow {
     visible:       open
 
     Behavior on implicitHeight { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-
-    Theme { id: theme }
 
     property int  todayDay:      1
     property int  todayMonth:    1
@@ -110,7 +110,7 @@ PanelWindow {
             Item {
                 width: parent.width; height: 40
 
-                // Flèche gauche dans cadre semi-transparent
+                // Flèche gauche
                 Rectangle {
                     anchors.left:           parent.left
                     anchors.verticalCenter: parent.verticalCenter
@@ -126,12 +126,12 @@ PanelWindow {
                     Text {
                         anchors.centerIn: parent; text: "<"
                         color: "#FFFFFF"
-                        font.pixelSize: 14; font.family: theme.font; font.bold: true
+                        font.pixelSize: 14; font.family: Theme.font; font.bold: true
                     }
                     MouseArea { id: prevMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.prevMonth() }
                 }
 
-                // Mois + année — blanc, encadré uniquement au hover
+                // Mois + année
                 Rectangle {
                     anchors.centerIn: parent
                     width:  monthYearTxt.implicitWidth + 16
@@ -147,7 +147,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         text: win.monthNames[win.viewMonth - 1] + " " + win.viewYear
                         color: "#FFFFFF"
-                        font.family: theme.font; font.pixelSize: 15; font.bold: true
+                        font.family: Theme.font; font.pixelSize: 15; font.bold: true
                     }
                     MouseArea {
                         id: yearHoverMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -155,7 +155,7 @@ PanelWindow {
                     }
                 }
 
-                // Flèche droite dans cadre semi-transparent
+                // Flèche droite
                 Rectangle {
                     anchors.right:          parent.right
                     anchors.verticalCenter: parent.verticalCenter
@@ -171,7 +171,7 @@ PanelWindow {
                     Text {
                         anchors.centerIn: parent; text: ">"
                         color: "#FFFFFF"
-                        font.pixelSize: 14; font.family: theme.font; font.bold: true
+                        font.pixelSize: 14; font.family: Theme.font; font.bold: true
                     }
                     MouseArea { id: nextMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: win.nextMonth() }
                 }
@@ -203,7 +203,7 @@ PanelWindow {
                         Text {
                             anchors.centerIn: parent; text: parent.parent.yr
                             color: yr === win.viewYear ? "#fff" : Qt.rgba(1,1,1, yr === win.todayYear ? 0.9 : 0.55)
-                            font.family: theme.font; font.pixelSize: 12; font.bold: yr === win.todayYear
+                            font.family: Theme.font; font.pixelSize: 12; font.bold: yr === win.todayYear
                         }
                         MouseArea {
                             id: yrMa; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -241,7 +241,7 @@ PanelWindow {
                                 width:  win.cellW; height: 24
                                 text:   modelData
                                 color:  Qt.rgba(1,1,1,0.40)
-                                font.pixelSize: 12; font.family: theme.font; font.bold: true
+                                font.pixelSize: 12; font.family: Theme.font; font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment:   Text.AlignVCenter
                             }
@@ -272,7 +272,7 @@ PanelWindow {
                                     anchors.centerIn: parent
                                     text:  win.dimPrev - win.firstDay + 1 + index
                                     color: Qt.rgba(1,1,1,0.18)
-                                    font.pixelSize: 14; font.family: theme.font
+                                    font.pixelSize: 14; font.family: Theme.font
                                 }
                             }
                         }
@@ -312,7 +312,7 @@ PanelWindow {
                                         color: isSelected || isToday ? "#fff"
                                              : isWeekend ? Qt.rgba(1,1,1,0.42)
                                              : Qt.rgba(1,1,1,0.88)
-                                        font.pixelSize: 14; font.family: theme.font
+                                        font.pixelSize: 14; font.family: Theme.font
                                         font.bold: isToday || isSelected
                                     }
                                 }

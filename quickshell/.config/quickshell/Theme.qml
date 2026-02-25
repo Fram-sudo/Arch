@@ -1,7 +1,13 @@
-// Theme.qml — Palette centralisée. Modifiez ici pour changer tout le shell.
+// Theme.qml — Palette centralisée (Singleton).
+// Accessible partout via Theme.bg, Theme.font, etc.
+pragma Singleton
+
+import Quickshell
 import QtQuick
 
-QtObject {
+Singleton {
+    id: root
+
     // ── Fond ──────────────────────────────────────────────────────────────
     readonly property color bg:        "#1D171E"
     readonly property color bgFloat:   "#231C1E"

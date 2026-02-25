@@ -3,15 +3,16 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
+import qs
 
 PanelWindow {
     id: win
     property bool open:        false
-    property int  buttonRightX: 0   // position X bord droit du bouton, passée depuis TopBar
+    property int  buttonRightX: 0
 
     anchors.top:   true
     anchors.right: true
-    margins.top:   theme.barHeight + 4
+    margins.top:   Theme.barHeight + 4
     margins.right: screen ? screen.width - buttonRightX : 4
 
     implicitWidth:  220
@@ -22,11 +23,9 @@ PanelWindow {
     aboveWindows:  true
     visible:       open
 
-    Theme { id: theme }
-
     // Luminosité via brightnessctl
     property bool brightnessAvailable: true
-    property real brightness: 0.5   // 0.0 → 1.0
+    property real brightness: 0.5
 
     Process {
         id: brightnessGetProc
@@ -67,8 +66,8 @@ PanelWindow {
 
     Rectangle {
         anchors.fill: parent
-        radius:       theme.popupRadius
-        color:        theme.bgPopup
+        radius:       Theme.popupRadius
+        color:        Theme.bgPopup
         border.color: Qt.rgba(163/255, 35/255, 53/255, 0.45)
         border.width: 1
         opacity:      win.open ? 1.0 : 0.0
@@ -97,8 +96,8 @@ PanelWindow {
                         if (parent.vol < 0.67) return "󰖀"
                         return "󰕾"
                     }
-                    color:  parent.muted ? theme.fgMuted : theme.teal
-                    font.family: theme.font; font.pixelSize: theme.iconSize
+                    color:  parent.muted ? Theme.fgMuted : Theme.teal
+                    font.family: Theme.font; font.pixelSize: Theme.iconSize
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -112,21 +111,18 @@ PanelWindow {
                     height: parent.height
                     anchors.verticalCenter: parent.verticalCenter
 
-                    // Fond
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.width; height: 4; radius: 2
-                        color: theme.bgHover
+                        color: Theme.bgHover
                     }
-                    // Remplissage
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width:  Math.max(4, parent.width * (parent.parent.muted ? 0 : parent.parent.vol))
                         height: 4; radius: 2
-                        color:  parent.parent.muted ? theme.fgDim : theme.teal
+                        color:  parent.parent.muted ? Theme.fgDim : Theme.teal
                         Behavior on width { NumberAnimation { duration: 80 } }
                     }
-                    // Zone de clic/drag
                     MouseArea {
                         anchors.fill: parent
                         onClicked: mouse => {
@@ -145,7 +141,7 @@ PanelWindow {
                 // Valeur
                 Text {
                     text:  Math.round(parent.vol * 100) + "%"
-                    color: theme.fgMuted; font.family: theme.font; font.pixelSize: 10
+                    color: Theme.fgMuted; font.family: Theme.font; font.pixelSize: 10
                     width: 26; horizontalAlignment: Text.AlignRight
                     anchors.verticalCenter: parent.verticalCenter
                     opacity: parent.muted ? 0.35 : 1.0
@@ -161,8 +157,8 @@ PanelWindow {
 
                 Text {
                     text:  "󰃞"
-                    color: theme.gold
-                    font.family: theme.font; font.pixelSize: theme.iconSize
+                    color: Theme.gold
+                    font.family: Theme.font; font.pixelSize: Theme.iconSize
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -174,13 +170,13 @@ PanelWindow {
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width: parent.width; height: 4; radius: 2
-                        color: theme.bgHover
+                        color: Theme.bgHover
                     }
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width:  Math.max(4, parent.width * win.brightness)
                         height: 4; radius: 2
-                        color:  theme.gold
+                        color:  Theme.gold
                         Behavior on width { NumberAnimation { duration: 80 } }
                     }
                     MouseArea {
@@ -194,7 +190,7 @@ PanelWindow {
 
                 Text {
                     text:  Math.round(win.brightness * 100) + "%"
-                    color: theme.fgMuted; font.family: theme.font; font.pixelSize: 10
+                    color: Theme.fgMuted; font.family: Theme.font; font.pixelSize: 10
                     width: 26; horizontalAlignment: Text.AlignRight
                     anchors.verticalCenter: parent.verticalCenter
                 }
