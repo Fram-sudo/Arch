@@ -29,7 +29,7 @@ PanelWindow {
         anchors.bottom:           parent.bottom
         anchors.bottomMargin:     3
         width:  dockBg.width * 1   // un peu plus court que le dock, plus élégant
-        height: 3
+        height: 5
         radius: 2
         color:  Qt.rgba(226/255, 217/255, 224/255, 0.25)
         visible: !root.revealed
