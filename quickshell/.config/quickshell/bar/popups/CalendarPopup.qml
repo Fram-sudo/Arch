@@ -11,7 +11,7 @@ PanelWindow {
 
     anchors.top:  true
     anchors.left: true
-    margins.top:  Theme.barHeight + 6
+    margins.top:  Theme.barHeight
     margins.left: Math.max(4, clockCenterX - implicitWidth / 2)
 
     implicitWidth:  340
@@ -25,14 +25,17 @@ PanelWindow {
     property int totalCells: firstDay + dimCurrent
     property int gridRows:   Math.ceil(totalCells / 7)
 
-    implicitHeight: showYearPicker
+    property int popupGap: 10
+    property int popupContentH: showYearPicker
                     ? 16 + 40 + 12 + 160 + 16
                     : 16 + 40 + 12 + (24 + 1 + gridRows * cellH + 14) + 16
+
+    implicitHeight: popupContentH + popupGap
 
     color:         "transparent"
     exclusionMode: ExclusionMode.Ignore
     aboveWindows:  true
-    visible:       open
+    visible:       open || calSlideAnim.running
 
     Behavior on implicitHeight { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
 
@@ -75,15 +78,21 @@ PanelWindow {
     }
 
     // ── Fond glassmorphism ───────────────────────────────────────────────
-    Rectangle {
+    Item {
         anchors.fill: parent
-        radius:       Theme.popupRadius
-        color:        Theme.popupBg
-        border.color: Theme.popupBorder
-        border.width: Theme.popupBorderWidth
+        clip: true
 
-        opacity: win.open ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: Theme.popupAnimNormal } }
+        Rectangle {
+            id: calPanel
+            width: parent.width
+            height: win.popupContentH
+            radius: Theme.popupRadius
+            color:  Theme.popupBg
+            border.color: Theme.popupBorder
+            border.width: Theme.popupBorderWidth
+
+            y: win.open ? win.popupGap : -height
+            Behavior on y { NumberAnimation { id: calSlideAnim; duration: 300; easing.type: Easing.OutQuart } }
 
         // Reflet glossy (z:0 = derrière le contenu)
         Rectangle {
@@ -294,4 +303,5 @@ PanelWindow {
             }
         }
     }
+}
 }

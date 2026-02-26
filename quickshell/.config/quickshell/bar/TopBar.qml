@@ -1,4 +1,4 @@
-// TopBar.qml — Barre principale
+// TopBar.qml — Barre principale glassmorphism flottante
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -26,6 +26,20 @@ PanelWindow {
     property bool calendarOpen: false
     property bool qsOpen:       false
 
+    function closeAll()        { powerOpen = false; calendarOpen = false; qsOpen = false }
+    function togglePower()     { var v = !powerOpen;    closeAll(); powerOpen    = v }
+    function toggleCalendar()  { var v = !calendarOpen; closeAll(); calendarOpen = v }
+    function toggleQs()        { var v = !qsOpen;       closeAll(); qsOpen       = v }
+
+    // Overlay plein écran — ferme tout au clic hors popup (déclaré AVANT les popups pour être en dessous)
+    PanelWindow {
+        screen: root.screen
+        anchors.top: true; anchors.left: true; anchors.right: true; anchors.bottom: true
+        color: "transparent"; exclusionMode: ExclusionMode.Ignore; aboveWindows: true
+        visible: root.powerOpen || root.calendarOpen || root.qsOpen
+        MouseArea { anchors.fill: parent; onClicked: root.closeAll() }
+    }
+
     PowerMenu {
         id: powerMenuWin; screen: root.screen
         open: root.powerOpen; onOpenChanged: root.powerOpen = open
@@ -40,28 +54,20 @@ PanelWindow {
         open: root.qsOpen; onOpenChanged: root.qsOpen = open
     }
 
-    // Overlay plein écran — ferme tout au clic hors barre
-    PanelWindow {
-        screen: root.screen
-        anchors.top: true; anchors.left: true; anchors.right: true; anchors.bottom: true
-        color: "transparent"; exclusionMode: ExclusionMode.Ignore; aboveWindows: false
-        visible: root.powerOpen || root.calendarOpen || root.qsOpen
-        MouseArea { anchors.fill: parent; onClicked: root.closeAll() }
-    }
-
-    function closeAll()        { powerOpen = false; calendarOpen = false; qsOpen = false }
-    function togglePower()     { var v = !powerOpen;    closeAll(); powerOpen    = v }
-    function toggleCalendar()  { var v = !calendarOpen; closeAll(); calendarOpen = v }
-    function toggleQs()        { var v = !qsOpen;       closeAll(); qsOpen       = v }
-
     // Volume (pour l'icône dans la barre)
     property var  pwSink:  Pipewire.defaultAudioSink
     property real vol:     pwSink && pwSink.audio ? pwSink.audio.volume : 0
     property bool muted:   pwSink && pwSink.audio ? pwSink.audio.muted  : false
 
+    // ── Fond opaque pleine largeur ──────────────────────────────────────
     Rectangle {
-        anchors.fill: parent
-        color:        Theme.bg
+        id: barBg
+        anchors.left:   parent.left
+        anchors.right:  parent.right
+        anchors.top:    parent.top
+        height: Theme.barHeight
+        radius: Theme.barRadius
+        color:  Theme.barBg
 
         RowLayout {
             anchors.fill:         parent
@@ -77,11 +83,11 @@ PanelWindow {
 
                 Rectangle {
                     width: Theme.barHeight - 10; height: Theme.barHeight - 10; radius: 6
-                    color: appMa.containsMouse ? Theme.bgHover : Qt.rgba(46/255,37/255,37/255,0.5)
+                    color: appMa.containsMouse ? Theme.glassHover : "transparent"
                     Behavior on color { ColorAnimation { duration: 120 } }
                     Text {
-                        anchors.centerIn: parent; text: "󱗼"
-                        color: Theme.red; font.family: Theme.font; font.pixelSize: Theme.iconSize + 1
+                        anchors.centerIn: parent; text: "󰣇"
+                        color: Theme.red; font.family: Theme.font; font.pixelSize: Theme.iconSize + 2
                     }
                     MouseArea {
                         id: appMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -93,7 +99,7 @@ PanelWindow {
                     height: Theme.barHeight - 12
                     width:  wsRow.implicitWidth + 12
                     radius: height / 2
-                    color:  Qt.rgba(46/255, 37/255, 37/255, 0.6)
+                    color:  Qt.rgba(1, 1, 1, 0.06)
 
                     Row {
                         id: wsRow
@@ -122,7 +128,7 @@ PanelWindow {
                                     width:   parent.width
                                     height:  active ? 6 : (busy ? 4 : 3)
                                     radius:  height / 2
-                                    color:   active ? Theme.red : (busy ? Theme.fgMuted : Qt.rgba(138/255,122/255,136/255,0.4))
+                                    color:   active ? Theme.red : (busy ? Theme.fgMuted : Qt.rgba(1,1,1,0.2))
                                     Behavior on width  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                                     Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                                     Behavior on color  { ColorAnimation  { duration: 180 } }
@@ -147,26 +153,25 @@ PanelWindow {
             Item { Layout.fillWidth: true }
             Item { Layout.fillWidth: true }
 
-            // ══ DROITE : QuickSettings + Power ═══════════════════════════
+            // ══ DROITE : flèche QS + Power ═══════════════════════════════
             RowLayout {
                 spacing: 4
 
-                // Bouton QuickSettings
+                // Bouton QuickSettings — flèche vers le bas
                 Rectangle {
                     width: Theme.barHeight - 10; height: Theme.barHeight - 10; radius: 5
-                    color: qsMa.containsMouse || root.qsOpen ? Theme.bgHover : "transparent"
+                    color: qsMa.containsMouse || root.qsOpen ? Theme.glassHover : "transparent"
                     Behavior on color { ColorAnimation { duration: 120 } }
                     Text {
                         anchors.centerIn: parent
-                        text: {
-                            if (root.muted || root.vol < 0.01) return "󰖁"
-                            if (root.vol < 0.34) return "󰕿"
-                            if (root.vol < 0.67) return "󰖀"
-                            return "󰕾"
-                        }
-                        color: root.qsOpen ? Theme.red : (root.muted ? Theme.fgMuted : Theme.teal)
+                        text: "󰅀"
+                        color: root.qsOpen ? Theme.red : Theme.fg
                         font.family: Theme.font; font.pixelSize: Theme.iconSize
                         Behavior on color { ColorAnimation { duration: 120 } }
+
+                        // Rotation quand le panneau est ouvert
+                        rotation: root.qsOpen ? 180 : 0
+                        Behavior on rotation { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                     }
                     MouseArea {
                         id: qsMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -197,10 +202,10 @@ PanelWindow {
         // ══ CENTRE — horloge ═════════════════════════════════════════════
         Rectangle {
             anchors.centerIn: parent
-            height: Theme.barHeight - 6
+            height: Theme.barHeight - 8
             width:  clockRow.implicitWidth + 20
-            radius: 5
-            color:  clockMa.containsMouse || root.calendarOpen ? Theme.bgHover : "transparent"
+            radius: (Theme.barHeight - 8) / 2
+            color:  clockMa.containsMouse || root.calendarOpen ? Theme.glassHover : "transparent"
             Behavior on color { ColorAnimation { duration: 120 } }
 
             Row {
@@ -216,7 +221,7 @@ PanelWindow {
                 }
                 Rectangle {
                     width: 1; height: Theme.barHeight - 18
-                    color: Qt.rgba(138/255,122/255,136/255,0.25)
+                    color: Qt.rgba(1,1,1,0.12)
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Text {

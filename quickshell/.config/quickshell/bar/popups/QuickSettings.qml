@@ -1,4 +1,4 @@
-// QuickSettings.qml — Panneau rapide : réseau, volume, luminosité, micro, profil énergie
+// QuickSettings.qml — Panneau rapide redesigné style glassmorphism
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -9,19 +9,21 @@ PanelWindow {
     id: win
     property bool open: false
 
-    // Positionné à droite, aligné avec le bouton power (même logique que PowerMenu)
     anchors.top:   true
     anchors.right: true
-    margins.top:   Theme.barHeight + 4
+    margins.top:   Theme.barHeight
     margins.right: 4
 
-    implicitWidth:  280
-    implicitHeight: contentCol.implicitHeight + 2 * Theme.popupPadding + 4
+    property int popupGap: 10
+    property int popupContentH: contentCol.implicitHeight + 2 * Theme.popupPadding + 4
+
+    implicitWidth:  300
+    implicitHeight: popupContentH + popupGap
 
     color:         "transparent"
     exclusionMode: ExclusionMode.Ignore
     aboveWindows:  true
-    visible:       open
+    visible:       open || qsSlideAnim.running
 
     // ═══════════════════════════════════════════════════════════════════════
     // ══ DONNÉES ════════════════════════════════════════════════════════════
@@ -117,18 +119,175 @@ PanelWindow {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // ══ COMPOSANT SLIDER RÉUTILISABLE ════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
+    component QsSlider: Item {
+        id: slider
+        property string icon: ""
+        property color  iconColor: Theme.popupFg
+        property real   value: 0
+        property bool   isMuted: false
+        property string percentText: Math.round(value * 100) + "%"
+
+        signal clicked()
+        signal sliderMoved(real newVal)
+
+        width: parent.width; height: 28
+
+        // Icône cliquable
+        Rectangle {
+            id: sliderIcon
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            width: 26; height: 26; radius: 7
+            color: sliderIconMa.containsMouse ? Theme.glassHover : "transparent"
+            Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+
+            Text {
+                anchors.centerIn: parent; text: slider.icon
+                color: slider.isMuted ? Theme.popupFgMuted : slider.iconColor
+                font.family: Theme.font; font.pixelSize: Theme.iconSize
+            }
+            MouseArea {
+                id: sliderIconMa; anchors.fill: parent
+                hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onClicked: slider.clicked()
+            }
+        }
+
+        // Barre de slider
+        Item {
+            id: sliderTrack
+            anchors.left: sliderIcon.right; anchors.leftMargin: 8
+            anchors.right: sliderPercent.left; anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            height: 20
+
+            // Track fond
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width; height: Theme.sliderHeight; radius: Theme.sliderRadius
+                color: Theme.sliderTrack
+            }
+            // Track rempli
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.max(Theme.sliderHeight, parent.width * (slider.isMuted ? 0 : slider.value))
+                height: Theme.sliderHeight; radius: Theme.sliderRadius
+                color: slider.isMuted ? Theme.popupFgDim : Theme.sliderFill
+                Behavior on width { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+            }
+            // Knob
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                x: Math.max(0, Math.min(parent.width - width, parent.width * (slider.isMuted ? 0 : slider.value) - width / 2))
+                width: Theme.sliderKnobSize; height: Theme.sliderKnobSize; radius: Theme.sliderKnobSize / 2
+                color: slider.isMuted ? Theme.popupFgDim : Theme.sliderKnob
+                Behavior on x { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+            }
+            MouseArea {
+                anchors.fill: parent
+                onClicked: mouse => slider.sliderMoved(Math.max(0, Math.min(1, mouse.x / width)))
+                onPositionChanged: mouse => {
+                    if (pressed) slider.sliderMoved(Math.max(0, Math.min(1, mouse.x / width)))
+                }
+            }
+        }
+
+        // Pourcentage
+        Text {
+            id: sliderPercent
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: slider.percentText
+            color: Theme.popupFgMuted; font.family: Theme.font; font.pixelSize: 10
+            width: 34; horizontalAlignment: Text.AlignRight
+            opacity: slider.isMuted ? 0.4 : 1.0
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ══ COMPOSANT TOGGLE PILL RÉUTILISABLE ═══════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
+    component TogglePill: Rectangle {
+        id: pill
+        property bool   active: false
+        property string icon: ""
+        property string label: ""
+        property bool   hasArrow: false
+
+        signal clicked()
+
+        height: 48; radius: Theme.toggleRadius
+        color: active
+               ? (pillMa.containsMouse ? Theme.toggleActiveBorder : Theme.toggleActiveBg)
+               : (pillMa.containsMouse ? Theme.popupHover : Theme.toggleInactiveBg)
+        border.color: active ? Theme.toggleActiveBorder : Theme.toggleInactiveBorder
+        border.width: 1
+        Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+        Behavior on border.color { ColorAnimation { duration: Theme.popupAnimFast } }
+
+        Row {
+            anchors.left: parent.left; anchors.leftMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 8
+
+            Text {
+                text: pill.icon
+                color: pill.active ? "#fff" : Theme.popupFgMuted
+                font.family: Theme.font; font.pixelSize: 15
+                anchors.verticalCenter: parent.verticalCenter
+                Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+            }
+            Text {
+                text: pill.label
+                color: pill.active ? "#fff" : Theme.popupFgMuted
+                font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
+                anchors.verticalCenter: parent.verticalCenter
+                width: pill.width - 12 - 15 - 8 - (pill.hasArrow ? 24 : 0) - 12
+                elide: Text.ElideRight
+                Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+            }
+        }
+
+        // Flèche droite
+        Text {
+            visible: pill.hasArrow
+            anchors.right: parent.right; anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            text: "›"; color: pill.active ? Qt.rgba(1,1,1,0.7) : Theme.popupFgDim
+            font.family: Theme.font; font.pixelSize: 16; font.bold: true
+            Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+        }
+
+        MouseArea {
+            id: pillMa; anchors.fill: parent
+            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            onClicked: pill.clicked()
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // ══ RENDU ══════════════════════════════════════════════════════════════
     // ═══════════════════════════════════════════════════════════════════════
 
-    Rectangle {
+    // ── Masque : clippe le popup quand il glisse sous la barre ─────────
+    Item {
         anchors.fill: parent
-        radius:       Theme.popupRadius
-        color:        Theme.popupBg
-        border.color: Theme.popupBorder
-        border.width: Theme.popupBorderWidth
+        clip: true
 
-        opacity: win.open ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: Theme.popupAnimNormal } }
+        Rectangle {
+            id: qsPanel
+            width: parent.width
+            height: win.popupContentH
+            radius: Theme.popupRadius
+            color:  Theme.popupBg
+            border.color: Theme.popupBorder
+            border.width: Theme.popupBorderWidth
+
+            // Position Y animée : glisse de sous la barre jusqu'au gap
+            y: win.open ? win.popupGap : -height
+            Behavior on y { NumberAnimation { id: qsSlideAnim; duration: 300; easing.type: Easing.OutQuart } }
 
         // Glossy
         Rectangle {
@@ -148,125 +307,36 @@ PanelWindow {
             anchors.left: parent.left; anchors.right: parent.right
             anchors.top: parent.top
             anchors.margins: Theme.popupPadding
-            spacing: 10
+            spacing: 12
 
             // ══════════════════════════════════════════════════════════════
-            // ── VOLUME ───────────────────────────────────────────────────
+            // ── VOLUME SLIDER ────────────────────────────────────────────
             // ══════════════════════════════════════════════════════════════
-            Row {
-                width: parent.width; height: 22; spacing: 8
-
-                Text {
-                    text: {
-                        if (win.muted || win.vol < 0.01) return "󰖁"
-                        if (win.vol < 0.34) return "󰕿"
-                        if (win.vol < 0.67) return "󰖀"
-                        return "󰕾"
-                    }
-                    color: win.muted ? Theme.popupFgMuted : Theme.teal
-                    font.family: Theme.font; font.pixelSize: Theme.iconSize
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 16
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: Quickshell.execDetached(["wpctl","set-mute","@DEFAULT_AUDIO_SINK@","toggle"])
-                    }
+            QsSlider {
+                icon: {
+                    if (win.muted || win.vol < 0.01) return "󰖁"
+                    if (win.vol < 0.34) return "󰕿"
+                    if (win.vol < 0.67) return "󰖀"
+                    return "󰕾"
                 }
-
-                Item {
-                    width: parent.width - 16 - 34 - 16; height: parent.height
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width; height: 4; radius: 2
-                        color: Theme.popupInnerBg
-                    }
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: Math.max(4, parent.width * (win.muted ? 0 : win.vol))
-                        height: 4; radius: 2
-                        color: win.muted ? Theme.popupFgDim : Theme.teal
-                        Behavior on width { NumberAnimation { duration: Theme.popupAnimFast } }
-                    }
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: Math.max(0, Math.min(parent.width - 8, parent.width * (win.muted ? 0 : win.vol) - 4))
-                        width: 8; height: 8; radius: 4
-                        color: win.muted ? Theme.popupFgDim : Theme.teal
-                        Behavior on x { NumberAnimation { duration: Theme.popupAnimFast } }
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: mouse => {
-                            Quickshell.execDetached(["wpctl","set-volume","-l","1","@DEFAULT_AUDIO_SINK@", Math.round(mouse.x / width * 100)+"%"])
-                        }
-                        onPositionChanged: mouse => {
-                            if (pressed) {
-                                var v = Math.max(0, Math.min(1, mouse.x / width))
-                                Quickshell.execDetached(["wpctl","set-volume","-l","1","@DEFAULT_AUDIO_SINK@", Math.round(v*100)+"%"])
-                            }
-                        }
-                    }
-                }
-
-                Text {
-                    text: Math.round(win.vol * 100) + "%"
-                    color: Theme.popupFgMuted; font.family: Theme.font; font.pixelSize: 10
-                    width: 34; horizontalAlignment: Text.AlignRight
-                    anchors.verticalCenter: parent.verticalCenter
-                    opacity: win.muted ? 0.35 : 1.0
-                }
+                iconColor: Theme.teal
+                value: win.vol
+                isMuted: win.muted
+                onClicked: Quickshell.execDetached(["wpctl","set-mute","@DEFAULT_AUDIO_SINK@","toggle"])
+                onSliderMoved: newVal => Quickshell.execDetached(["wpctl","set-volume","-l","1","@DEFAULT_AUDIO_SINK@", Math.round(newVal * 100)+"%"])
             }
 
             // ══════════════════════════════════════════════════════════════
-            // ── LUMINOSITÉ ───────────────────────────────────────────────
+            // ── LUMINOSITÉ SLIDER ────────────────────────────────────────
             // ══════════════════════════════════════════════════════════════
-            Row {
+            QsSlider {
                 visible: win.brightnessAvailable
-                width: parent.width; height: 22; spacing: 8
-
-                Text {
-                    text: "󰃞"; color: Theme.gold
-                    font.family: Theme.font; font.pixelSize: Theme.iconSize
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 16
-                }
-
-                Item {
-                    width: parent.width - 16 - 34 - 16; height: parent.height
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width; height: 4; radius: 2
-                        color: Theme.popupInnerBg
-                    }
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: Math.max(4, parent.width * win.brightness)
-                        height: 4; radius: 2; color: Theme.gold
-                        Behavior on width { NumberAnimation { duration: Theme.popupAnimFast } }
-                    }
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        x: Math.max(0, Math.min(parent.width - 8, parent.width * win.brightness - 4))
-                        width: 8; height: 8; radius: 4; color: Theme.gold
-                        Behavior on x { NumberAnimation { duration: Theme.popupAnimFast } }
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: mouse => win.setBrightness(mouse.x / width)
-                        onPositionChanged: mouse => { if (pressed) win.setBrightness(mouse.x / width) }
-                    }
-                }
-
-                Text {
-                    text: Math.round(win.brightness * 100) + "%"
-                    color: Theme.popupFgMuted; font.family: Theme.font; font.pixelSize: 10
-                    width: 34; horizontalAlignment: Text.AlignRight
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+                icon: "󰃞"
+                iconColor: Theme.gold
+                value: win.brightness
+                isMuted: false
+                onClicked: {} // pas de toggle
+                onSliderMoved: newVal => win.setBrightness(newVal)
             }
 
             // ══════════════════════════════════════════════════════════════
@@ -275,104 +345,58 @@ PanelWindow {
             Rectangle { width: parent.width; height: 1; color: Theme.popupSeparator }
 
             // ══════════════════════════════════════════════════════════════
-            // ── TOGGLES RÉSEAU ───────────────────────────────────────────
+            // ── GRILLE TOGGLES (2×2) ─────────────────────────────────────
             // ══════════════════════════════════════════════════════════════
+
+            // Ligne 1 : WiFi + Bluetooth
             Row {
                 width: parent.width; spacing: 6
+                TogglePill {
+                    width: (parent.width - 6) / 2
+                    active: win.wifiSsid !== ""
+                    icon: win.wifiSsid !== "" ? "󰤨" : "󰤭"
+                    label: win.wifiSsid !== "" ? win.wifiSsid : "WiFi"
+                    hasArrow: true
+                    onClicked: Quickshell.execDetached(["nmcli", "radio", "wifi",
+                        win.wifiStatus === "enabled" ? "off" : "on"])
+                }
+                TogglePill {
+                    width: (parent.width - 6) / 2
+                    active: win.btStatus === "yes"
+                    icon: win.btStatus === "yes" ? "󰂯" : "󰂲"
+                    label: "Bluetooth"
+                    hasArrow: true
+                    onClicked: Quickshell.execDetached(["bluetoothctl", "power",
+                        win.btStatus === "yes" ? "off" : "on"])
+                }
+            }
 
-                // WiFi
-                Rectangle {
-                    property bool connected: win.wifiSsid !== ""
-                    width: (parent.width - 12) / 3; height: 52; radius: 10
-                    color: connected ? Theme.popupAccent
-                         : wifiMa.containsMouse ? Theme.popupHover : Theme.popupInnerBg
-                    border.color: connected ? Theme.popupAccent : Theme.popupInnerBorder
-                    border.width: 1
-                    Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
-
-                    Column {
-                        anchors.centerIn: parent; spacing: 3
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: parent.parent.connected ? "󰤨" : "󰤭"
-                            color: parent.parent.connected ? "#fff" : Theme.popupFgMuted
-                            font.family: Theme.font; font.pixelSize: 16
-                        }
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: win.wifiSsid !== "" ? win.wifiSsid : "WiFi"
-                            color: parent.parent.connected ? "#fff" : Theme.popupFgMuted
-                            font.family: Theme.font; font.pixelSize: 9
-                            width: parent.parent.width - 8
-                            horizontalAlignment: Text.AlignHCenter
-                            elide: Text.ElideRight
-                        }
-                    }
-                    MouseArea {
-                        id: wifiMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: Quickshell.execDetached(["nmcli", "radio", "wifi",
-                            win.wifiStatus === "enabled" ? "off" : "on"])
+            // Ligne 2 : Power Profile + Ethernet
+            Row {
+                width: parent.width; spacing: 6
+                TogglePill {
+                    visible: win.powerProfileAvailable
+                    width: (parent.width - 6) / 2
+                    active: win.powerProfile === "performance"
+                    icon: win.powerProfile === "performance" ? "󱐋"
+                        : win.powerProfile === "power-saver"  ? "󰌪" : "󰗑"
+                    label: win.powerProfile === "performance" ? "Perf."
+                        : win.powerProfile === "power-saver"  ? "Éco." : "Équilibré"
+                    hasArrow: true
+                    onClicked: {
+                        var next = "balanced"
+                        if (win.powerProfile === "balanced")     next = "performance"
+                        if (win.powerProfile === "performance")  next = "power-saver"
+                        Quickshell.execDetached(["powerprofilectl", "set", next])
+                        win.powerProfile = next
                     }
                 }
-
-                // Ethernet
-                Rectangle {
-                    property bool connected: win.ethStatus === "connected"
-                    width: (parent.width - 12) / 3; height: 52; radius: 10
-                    color: connected ? Theme.popupAccent
-                         : ethMa.containsMouse ? Theme.popupHover : Theme.popupInnerBg
-                    border.color: connected ? Theme.popupAccent : Theme.popupInnerBorder
-                    border.width: 1
-                    Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
-
-                    Column {
-                        anchors.centerIn: parent; spacing: 3
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: "󰈀"
-                            color: parent.parent.connected ? "#fff" : Theme.popupFgMuted
-                            font.family: Theme.font; font.pixelSize: 16
-                        }
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: "Ethernet"
-                            color: parent.parent.connected ? "#fff" : Theme.popupFgMuted
-                            font.family: Theme.font; font.pixelSize: 9
-                        }
-                    }
-                    MouseArea { id: ethMa; anchors.fill: parent; hoverEnabled: true }
-                }
-
-                // Bluetooth
-                Rectangle {
-                    property bool powered: win.btStatus === "yes"
-                    width: (parent.width - 12) / 3; height: 52; radius: 10
-                    color: powered ? Theme.popupAccent
-                         : btMa.containsMouse ? Theme.popupHover : Theme.popupInnerBg
-                    border.color: powered ? Theme.popupAccent : Theme.popupInnerBorder
-                    border.width: 1
-                    Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
-
-                    Column {
-                        anchors.centerIn: parent; spacing: 3
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: parent.parent.powered ? "󰂯" : "󰂲"
-                            color: parent.parent.powered ? "#fff" : Theme.popupFgMuted
-                            font.family: Theme.font; font.pixelSize: 16
-                        }
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: "Bluetooth"
-                            color: parent.parent.powered ? "#fff" : Theme.popupFgMuted
-                            font.family: Theme.font; font.pixelSize: 9
-                        }
-                    }
-                    MouseArea {
-                        id: btMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: Quickshell.execDetached(["bluetoothctl", "power",
-                            win.btStatus === "yes" ? "off" : "on"])
-                    }
+                TogglePill {
+                    width: (parent.width - 6) / 2
+                    active: win.ethStatus === "connected"
+                    icon: "󰈀"
+                    label: "Ethernet"
+                    hasArrow: false
                 }
             }
 
@@ -382,18 +406,18 @@ PanelWindow {
             Rectangle { width: parent.width; height: 1; color: Theme.popupSeparator }
 
             // ══════════════════════════════════════════════════════════════
-            // ── MICRO + POWER PROFILE ────────────────────────────────────
+            // ── MICRO + NOTIFICATIONS ────────────────────────────────────
             // ══════════════════════════════════════════════════════════════
             Row {
                 width: parent.width; spacing: 6
 
                 // Micro
                 Rectangle {
-                    width: (parent.width - 6) / 2; height: 34; radius: 9
+                    width: (parent.width - 6) / 2; height: 36; radius: 10
                     color: micMa.containsMouse
-                           ? (win.micMuted ? Theme.popupHover : Theme.popupAccentBright)
-                           : (win.micMuted ? Theme.popupInnerBg : Theme.popupAccent)
-                    border.color: win.micMuted ? Theme.popupInnerBorder : "transparent"
+                           ? (win.micMuted ? Theme.popupHover : Theme.toggleActiveBorder)
+                           : (win.micMuted ? Theme.toggleInactiveBg : Theme.toggleActiveBg)
+                    border.color: win.micMuted ? Theme.toggleInactiveBorder : "transparent"
                     border.width: 1
                     Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
 
@@ -416,42 +440,34 @@ PanelWindow {
                     }
                 }
 
-                // Power Profile
+                // Notifications (placeholder — DND toggle)
                 Rectangle {
-                    visible: win.powerProfileAvailable
-                    width: (parent.width - 6) / 2; height: 34; radius: 9
-                    color: ppMa.containsMouse ? Theme.popupHover : Theme.popupInnerBg
-                    border.color: Theme.popupInnerBorder; border.width: 1
+                    width: (parent.width - 6) / 2; height: 36; radius: 10
+                    property bool dnd: false
+                    color: dndMa.containsMouse ? Theme.popupHover : Theme.toggleInactiveBg
+                    border.color: Theme.toggleInactiveBorder; border.width: 1
                     Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
 
                     Row {
                         anchors.centerIn: parent; spacing: 6
                         Text {
-                            text: win.powerProfile === "performance" ? "󱐋"
-                                : win.powerProfile === "power-saver"  ? "󰌪" : "󰗑"
-                            color: win.powerProfile === "performance" ? Theme.gold
-                                 : win.powerProfile === "power-saver"  ? Theme.teal : Theme.popupFg
+                            text: parent.parent.dnd ? "󰂛" : "󰂚"
+                            color: parent.parent.dnd ? Theme.red : Theme.popupFgMuted
                             font.family: Theme.font; font.pixelSize: 13
                         }
                         Text {
-                            text: win.powerProfile === "performance" ? "Perf."
-                                : win.powerProfile === "power-saver"  ? "Éco." : "Équilibré"
-                            color: Theme.popupFg
+                            text: parent.parent.dnd ? "Silencieux" : "Notifs"
+                            color: Theme.popupFgMuted
                             font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
                         }
                     }
                     MouseArea {
-                        id: ppMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            var next = "balanced"
-                            if (win.powerProfile === "balanced")     next = "performance"
-                            if (win.powerProfile === "performance")  next = "power-saver"
-                            Quickshell.execDetached(["powerprofilectl", "set", next])
-                            win.powerProfile = next
-                        }
+                        id: dndMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: parent.dnd = !parent.dnd
                     }
                 }
             }
         }
     }
+}
 }

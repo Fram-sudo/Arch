@@ -25,15 +25,40 @@ PanelWindow {
         id: hintLine
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom:           parent.bottom
-        anchors.bottomMargin:     3
-        width:  dockBg.width * 1
-        height: 5
+        width:  dockBg.width * 0.35
+        height: 4
         radius: 2
         color:  Qt.rgba(226/255, 217/255, 224/255, 0.25)
-        visible: !root.revealed
 
-        opacity: triggerZone.containsMouse ? 1.0 : 0.55
-        Behavior on opacity { NumberAnimation { duration: 200 } }
+        property bool showing: true
+
+        anchors.bottomMargin: showing ? 3 : -8
+        opacity: showing ? 0.55 : 0
+
+        Behavior on anchors.bottomMargin {
+            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+        }
+        Behavior on opacity {
+            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+        }
+
+        Timer {
+            id: hintShowTimer
+            interval: 320
+            onTriggered: hintLine.showing = true
+        }
+
+        Connections {
+            target: root
+            function onRevealedChanged() {
+                if (root.revealed) {
+                    hintShowTimer.stop()
+                    hintLine.showing = false
+                } else {
+                    hintShowTimer.restart()
+                }
+            }
+        }
     }
 
     // ── Zone de détection ────────────────────────────────────────────────
@@ -77,7 +102,10 @@ PanelWindow {
         property int cnt: appsModel.count
         property int dragIndex: -1
 
-        width:  cnt * itemSzBase + (cnt - 1) * itemSpacing + 20
+        property int contentWidth: cnt * itemSzBase + (cnt - 1) * itemSpacing
+        property int containerPadding: 10
+
+        width:  contentWidth + containerPadding * 2 + 8
         height: Math.round(itemSzBase * 1.45) + 12
         clip:   false
 
@@ -94,6 +122,29 @@ PanelWindow {
             onHoveredChanged: {
                 if (hovered)      hideTimer.stop()
                 else if (!triggerZone.containsMouse) hideTimer.restart()
+            }
+        }
+
+        // ── Fond glassmorphism du dock ───────────────────────────────────
+        Rectangle {
+            id: dockContainer
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            width:  dockBg.contentWidth + dockBg.containerPadding * 2 + 8
+            height: dockBg.itemSzBase + 16
+            radius: Theme.dockRadius
+            color:  Theme.glassBg
+            border.color: Theme.glassBorder
+            border.width: Theme.glassBorderWidth
+
+            Rectangle {
+                anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                height: parent.height * Theme.glossHeight; radius: parent.radius
+                gradient: Gradient {
+                    orientation: Gradient.Vertical
+                    GradientStop { position: 0.0; color: Theme.glossTop }
+                    GradientStop { position: 1.0; color: Theme.glossBottom }
+                }
             }
         }
 
@@ -164,15 +215,15 @@ PanelWindow {
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
                         anchors.bottom:           parent.bottom
-                        anchors.bottomMargin:     1
+                        anchors.bottomMargin:     -2
                         width: {
                             if (!wmClass) return 0
                             var wins = Hyprland.windows.values
                             for (var i = 0; i < wins.length; i++)
-                                if (wins[i].resourceClass.toLowerCase() === wmClass.toLowerCase()) return 10
+                                if (wins[i].resourceClass.toLowerCase() === wmClass.toLowerCase()) return 5
                             return 0
                         }
-                        height: 3; radius: 2; color: "#A32335"
+                        height: 5; radius: 3; color: Theme.red
                         Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                     }
 
