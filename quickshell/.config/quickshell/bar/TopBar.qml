@@ -218,10 +218,22 @@ PanelWindow {
                     onClicked: root.toggleMedia()
                 }
 
-                // Batterie
-                BatteryIndicator {
-                    percent:  root.batteryPercent
-                    charging: root.batteryCharging
+                // Batterie dans un cadre
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width:  batIndicator.implicitWidth + 10
+                    height: Theme.barHeight - 8
+                    radius: 5
+                    color:  Theme.glassHover
+                    border.color: Theme.border
+                    border.width: 1
+
+                    BatteryIndicator {
+                        id: batIndicator
+                        anchors.centerIn: parent
+                        percent:  root.batteryPercent
+                        charging: root.batteryCharging
+                    }
                 }
 
                 // Bouton Centre de contrôle (⊞ macOS-like)
@@ -290,48 +302,85 @@ PanelWindow {
         property int  percent:  100
         property bool charging: false
 
-        implicitWidth:  batRow.implicitWidth + 12
-        implicitHeight: Theme.barHeight
-
-        property color batColor: {
-            if (charging) return "#4CAF50"
-            if (percent > 60) return Theme.fg
-            if (percent > 30) return Theme.gold
+        // Couleur selon niveau
+        property color fillColor: {
+            if (charging)       return "#4CAF50"
+            if (percent > 30)   return "#4CAF50"
+            if (percent > 15)   return Theme.gold
             return Theme.red
         }
 
-        Row {
-            id: batRow
-            anchors.centerIn: parent
-            spacing: 4
+        implicitWidth:  batBody.width + 6 + batPct.implicitWidth
+        implicitHeight: Theme.barHeight
 
-            // Icône batterie colorée selon niveau
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: {
-                    if (bat.charging) return "󰂄"
-                    if (bat.percent > 90) return "󰁹"
-                    if (bat.percent > 75) return "󰂀"
-                    if (bat.percent > 60) return "󰁿"
-                    if (bat.percent > 45) return "󰁾"
-                    if (bat.percent > 30) return "󰁽"
-                    if (bat.percent > 15) return "󰁺"
-                    return "󰁻"
+        // ── Corps de la batterie (horizontal) ────────────────────────────
+        Item {
+            id: batBody
+            anchors.verticalCenter: parent.verticalCenter
+            width:  22
+            height: 11
+
+            // Contour
+            Rectangle {
+                anchors.left:   parent.left
+                anchors.top:    parent.top
+                anchors.bottom: parent.bottom
+                width: 20
+                radius: 2.5
+                color:  "transparent"
+                border.color: Qt.rgba(bat.fillColor.r, bat.fillColor.g, bat.fillColor.b, 0.55)
+                border.width: 1.5
+                Behavior on border.color { ColorAnimation { duration: 400 } }
+
+                // Remplissage intérieur
+                Rectangle {
+                    anchors.left:    parent.left
+                    anchors.top:     parent.top
+                    anchors.bottom:  parent.bottom
+                    anchors.margins: 2
+                    width: Math.max(2, (parent.width - 4) * (bat.percent / 100))
+                    radius: 1.5
+                    color: bat.fillColor
+                    Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation  { duration: 400 } }
                 }
-                color: bat.batColor
-                font.family: Theme.fontMono
-                font.pixelSize: Theme.iconSize + 2
-                Behavior on color { ColorAnimation { duration: 400 } }
+
+                // Éclair de charge (centré sur le corps)
+                Text {
+                    anchors.centerIn: parent
+                    visible: bat.charging
+                    text: "⚡"
+                    font.pixelSize: 7
+                    color: "#fff"
+                    style: Text.Outline
+                    styleColor: Qt.rgba(0,0,0,0.4)
+                }
             }
-            Text {
+
+            // Borne positive (petit rectangle à droite)
+            Rectangle {
+                anchors.right:          parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                text: bat.percent + "%"
-                color: bat.batColor
-                font.family: Theme.font
-                font.pixelSize: Theme.fontSizeXs
-                font.weight: Font.Medium
+                width:  2.5
+                height: 5
+                radius: 1
+                color:  Qt.rgba(bat.fillColor.r, bat.fillColor.g, bat.fillColor.b, 0.55)
                 Behavior on color { ColorAnimation { duration: 400 } }
             }
+        }
+
+        // Pourcentage
+        Text {
+            id: batPct
+            anchors.left:            batBody.right
+            anchors.leftMargin:      6
+            anchors.verticalCenter:  parent.verticalCenter
+            text:  bat.percent + "%"
+            color: bat.fillColor
+            font.family:  Theme.font
+            font.pixelSize: Theme.fontSizeXs
+            font.weight:  Font.Medium
+            Behavior on color { ColorAnimation { duration: 400 } }
         }
     }
 
