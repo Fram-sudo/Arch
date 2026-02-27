@@ -10,15 +10,33 @@ PanelWindow {
     id: win
     property bool open: false
 
-    anchors.top:   true
-    anchors.right: true
-    margins.top:   Theme.barHeight + 6
-    margins.right: 8
+    signal closeRequested()
 
-    implicitWidth:  300
-    property int contentH: mainCol.implicitHeight + 2 * Theme.popupPadding
-    property int popupGap: 6
-    implicitHeight: contentH + popupGap
+    // Plein écran pour capturer les clics hors popup
+    anchors.top:    true
+    anchors.left:   true
+    anchors.right:  true
+    anchors.bottom: true
+
+    property int panelWidth:  300
+    property int panelRight:  8
+    property int panelTop:    Theme.barHeight + 6
+    property int contentH:    0  // sera mis à jour par mainCol
+    property int panelHeight: contentH + 2 * Theme.popupPadding
+
+    // MouseArea plein écran — ferme si clic hors du rectangle visuel
+    MouseArea {
+        anchors.fill: parent
+        onClicked: mouse => {
+            var panelX = win.width - win.panelRight - win.panelWidth
+            var inPanel = (mouse.x >= panelX &&
+                           mouse.x <= panelX + win.panelWidth &&
+                           mouse.y >= win.panelTop &&
+                           mouse.y <= win.panelTop + win.panelHeight)
+            if (!inPanel) win.closeRequested()
+        }
+        propagateComposedEvents: true
+    }
 
     color:         "transparent"
     exclusionMode: ExclusionMode.Ignore
@@ -113,18 +131,20 @@ PanelWindow {
 
     Item {
         anchors.fill: parent
-        clip: true
 
         Rectangle {
             id: qsPanel
-            width:  parent.width
-            height: win.contentH
+            x:      win.width - win.panelRight - win.panelWidth
+            width:  win.panelWidth
+            height: mainCol.implicitHeight + 2 * Theme.popupPadding
             radius: Theme.popupRadius
             color:  Theme.popupBg
             border.color: Theme.popupBorder
             border.width: Theme.popupBorderWidth
 
-            y: win.open ? win.popupGap : -height - 10
+            onHeightChanged: win.contentH = height
+
+            y: win.open ? win.panelTop : win.panelTop - height - 10
             Behavior on y {
                 NumberAnimation {
                     id: slideAnim

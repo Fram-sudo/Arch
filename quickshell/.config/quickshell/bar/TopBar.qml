@@ -35,28 +35,22 @@ PanelWindow {
     function toggleQs()       { var v = !qsOpen;       closeAll(); qsOpen       = v }
     function toggleMedia()    { var v = !mediaOpen;    closeAll(); mediaOpen    = v }
 
-    // ── Overlay fermeture ─────────────────────────────────────────────────
-    PanelWindow {
-        screen: root.screen
-        anchors.top: true; anchors.left: true; anchors.right: true; anchors.bottom: true
-        color: "transparent"; exclusionMode: ExclusionMode.Ignore; aboveWindows: true
-        visible: root.calendarOpen || root.qsOpen || root.mediaOpen
-        MouseArea { anchors.fill: parent; onClicked: root.closeAll() }
-    }
-
     // ── Popups ─────────────────────────────────────────────────────────────
     CalendarPopup {
         id: calendarWin; screen: root.screen
         open: root.calendarOpen; onOpenChanged: root.calendarOpen = open
         clockCenterX: root.screen ? root.screen.width / 2 : 0
+        onCloseRequested: root.calendarOpen = false
     }
     QuickSettings {
         id: qsWin; screen: root.screen
         open: root.qsOpen; onOpenChanged: root.qsOpen = open
+        onCloseRequested: root.qsOpen = false
     }
     MediaPopup {
         id: mediaWin; screen: root.screen
         open: root.mediaOpen; onOpenChanged: root.mediaOpen = open
+        onCloseRequested: root.mediaOpen = false
     }
 
     // ── Volume Pipewire ───────────────────────────────────────────────────
@@ -228,21 +222,6 @@ PanelWindow {
                 BatteryIndicator {
                     percent:  root.batteryPercent
                     charging: root.batteryCharging
-                }
-
-                // Indicateur volume compact
-                BarButton {
-                    icon: {
-                        if (root.muted || root.vol < 0.01) return "󰖁"
-                        if (root.vol < 0.34) return "󰕿"
-                        if (root.vol < 0.67) return "󰖀"
-                        return "󰕾"
-                    }
-                    iconColor: root.qsOpen ? Theme.red : Theme.fgMuted
-                    active: root.qsOpen
-                    onClicked: root.toggleQs()
-                    onWheelUp: Quickshell.execDetached(["wpctl","set-volume","-l","1","@DEFAULT_AUDIO_SINK@","3%+"])
-                    onWheelDown: Quickshell.execDetached(["wpctl","set-volume","-l","1","@DEFAULT_AUDIO_SINK@","3%-"])
                 }
 
                 // Bouton Centre de contrôle (⊞ macOS-like)

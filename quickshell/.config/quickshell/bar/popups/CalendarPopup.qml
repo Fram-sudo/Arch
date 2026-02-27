@@ -10,12 +10,32 @@ PanelWindow {
     property bool open:         false
     property int  clockCenterX: 0
 
-    anchors.top:  true
-    anchors.left: true
-    margins.top:  Theme.barHeight + 6
-    margins.left: Math.max(8, clockCenterX - implicitWidth / 2)
+    signal closeRequested()
 
-    implicitWidth: 320
+    // Plein écran pour capturer les clics hors popup
+    anchors.top:    true
+    anchors.left:   true
+    anchors.right:  true
+    anchors.bottom: true
+
+    // Décalage du contenu visuel
+    property int panelLeft: Math.max(8, clockCenterX - panelWidth / 2)
+    property int panelTop:  Theme.barHeight + 6
+    property int panelWidth: 320
+
+    // MouseArea plein écran — ferme si clic hors du rectangle visuel
+    MouseArea {
+        anchors.fill: parent
+        onClicked: mouse => {
+            var inPanel = (mouse.x >= win.panelLeft &&
+                           mouse.x <= win.panelLeft + win.panelWidth &&
+                           mouse.y >= win.panelTop &&
+                           mouse.y <= win.panelTop + calPanel.height)
+            if (!inPanel) win.closeRequested()
+        }
+        // Laisser passer les clics vers le contenu
+        propagateComposedEvents: true
+    }
 
     // ── Calendrier ────────────────────────────────────────────────────────
     property int todayDay:    1
@@ -44,12 +64,8 @@ PanelWindow {
 
     property int contentHeight: showYearPicker
         ? (14 + 44 + 10 + 6 + 160 + 14)
-        : (14 + 44 + 10 + 6 + 22 + 4 + (gridRows * cellH) + 14)
-
-    property int popupGap: 6
-    implicitHeight: contentHeight + popupGap
-
-    Behavior on implicitHeight { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+        : (14 + 44 + 10 + 6 + 22 + 4 + (gridRows * cellH) + 16 + 16 + 14)
+        // 16 = padding interne Rectangle (8 top + 8 bottom), dernier 16 = marge basse colonne
 
     color:         "transparent"
     exclusionMode: ExclusionMode.Ignore
@@ -81,19 +97,20 @@ PanelWindow {
 
     Item {
         anchors.fill: parent
-        clip: true
 
         Rectangle {
             id: calPanel
-            width:  parent.width
+            x: win.panelLeft
+            width:  win.panelWidth
             height: win.contentHeight
+            Behavior on height { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
             radius: Theme.popupRadius
             color:  Theme.popupBg
             border.color: Theme.popupBorder
             border.width: Theme.popupBorderWidth
 
             // Animation slide depuis sous la barre
-            y: win.open ? win.popupGap : -height - 10
+            y: win.open ? win.panelTop : win.panelTop - height - 10
             Behavior on y {
                 NumberAnimation {
                     id: slideAnim
@@ -228,10 +245,21 @@ PanelWindow {
                 }
 
                 // ── Grille calendrier ──────────────────────────────────────
-                Column {
+                Rectangle {
                     visible: !win.showYearPicker
                     width: parent.width
-                    spacing: 0
+                    height: calGrid.implicitHeight + 16
+                    radius: 12
+                    color: Theme.innerBg
+                    border.color: Theme.innerBorder
+                    border.width: 1
+
+                    Column {
+                        id: calGrid
+                        anchors.left: parent.left; anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 8
+                        spacing: 0
 
                     // Noms des jours
                     Row {
@@ -325,7 +353,8 @@ PanelWindow {
                             }
                         }
                     }
-                }
+                    } // fin Column calGrid
+                } // fin Rectangle cadre calendrier
             }
         }
     }
