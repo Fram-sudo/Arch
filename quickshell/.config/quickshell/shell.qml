@@ -3,8 +3,13 @@ import QtQuick
 import Quickshell
 import qs.bar
 import qs.dock
+import qs.dashboard
 
 ShellRoot {
+    // ── Dashboard (instance unique, non lié à un écran) ───────────────────
+    Dashboard { id: dashboard }
+
+    // ── Bar + Dock par écran ──────────────────────────────────────────────
     Variants {
         model: Quickshell.screens
 
