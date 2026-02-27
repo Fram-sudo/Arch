@@ -5,7 +5,6 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
-import Quickshell.Services.Mpris
 import qs
 import qs.bar.popups
 
@@ -39,7 +38,7 @@ PanelWindow {
     CalendarPopup {
         id: calendarWin; screen: root.screen
         open: root.calendarOpen; onOpenChanged: root.calendarOpen = open
-        clockCenterX: root.screen ? root.screen.width / 2 : 0
+        clockCenterX: clockRect.visible ? clockRect.mapToItem(null, clockRect.width / 2, 0).x : (root.screen ? root.screen.width / 2 : 0)
         onCloseRequested: root.calendarOpen = false
     }
     QuickSettings {
@@ -51,6 +50,9 @@ PanelWindow {
         id: mediaWin; screen: root.screen
         open: root.mediaOpen; onOpenChanged: root.mediaOpen = open
         onCloseRequested: root.mediaOpen = false
+        mediaCenterX: mediaBtn.visible
+                      ? mediaBtn.mapToItem(null, mediaBtn.width / 2, 0).x
+                      : (root.screen ? root.screen.width / 2 : 0)
     }
 
     // ── Volume Pipewire ───────────────────────────────────────────────────
@@ -58,21 +60,40 @@ PanelWindow {
     property real vol:    pwSink && pwSink.audio ? pwSink.audio.volume : 0
     property bool muted:  pwSink && pwSink.audio ? pwSink.audio.muted  : false
 
-    // ── MPRIS : est-ce qu'un player tourne ? ────────────────────────────
-    property var activePlayer: {
-        var players = MprisController.players
-        for (var i = 0; i < players.length; i++) {
-            if (players[i].playbackStatus === MprisPlaybackStatus.Playing)
-                return players[i]
+    // ── Détection média via playerctl (compatible Firefox/instances) ──────
+    property bool hasMedia:   false
+    property bool isPlayingMedia: false
+
+    Process {
+        id: mediaCheckProc
+        command: ["playerctl", "-l"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var names = this.text.trim().split("\n").filter(n => n.length > 0)
+                root.hasMedia = names.length > 0
+                if (names.length > 0) statusCheckProc.running = true
+                else root.isPlayingMedia = false
+            }
         }
-        return players.length > 0 ? players[0] : null
     }
-    property bool hasMedia: activePlayer !== null
+    Process {
+        id: statusCheckProc
+        command: ["playerctl", "status"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.isPlayingMedia = this.text.trim() === "Playing"
+            }
+        }
+    }
+    Timer {
+        interval: 2000; running: true; repeat: true; triggeredOnStart: true
+        onTriggered: mediaCheckProc.running = true
+    }
 
     // ── Fond barre ────────────────────────────────────────────────────────
     Rectangle {
         anchors.fill: parent
-        color: Theme.barBg
+        color: "#000000"
 
         // Bordure basse subtile
         Rectangle {
@@ -96,7 +117,7 @@ PanelWindow {
                 // Bouton logo Arch → ouvre rofi
                 BarButton {
                     icon: "󰣇"
-                    iconColor: Theme.red
+                    iconColor: "#fff"
                     active: false
                     onClicked: {
                         root.closeAll()
@@ -136,7 +157,7 @@ PanelWindow {
                                     width:  parent.width
                                     height: active ? 5 : (busy ? 3 : 2)
                                     radius: height / 2
-                                    color:  active ? Theme.red : (busy ? Theme.fgMuted : Qt.rgba(1,1,1,0.18))
+                                    color:  active ? "#fff" : (busy ? Qt.rgba(1,1,1,0.45) : Qt.rgba(1,1,1,0.18))
                                     Behavior on width  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                                     Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                                     Behavior on color  { ColorAnimation  { duration: 180 } }
@@ -153,42 +174,48 @@ PanelWindow {
 
             Item { Layout.fillWidth: true }
 
-            // ══ CENTRE — Horloge ══════════════════════════════════════════
+            // ══ CENTRE — Horloge fixe, média ancré à droite en absolu ════
             Item {
                 Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
-                implicitWidth:  clockRow.implicitWidth + 24
+                implicitWidth:  clockRect.width
                 implicitHeight: Theme.barHeight
 
+                // Horloge — toujours centrée
                 Rectangle {
+                    id: clockRect
                     anchors.centerIn: parent
                     width:  clockRow.implicitWidth + 24
-                    height: Theme.barHeight - 4
-                    radius: (Theme.barHeight - 4) / 2
-                    color:  clockMa.containsMouse || root.calendarOpen ? Theme.glassHover : "transparent"
-                    Behavior on color { ColorAnimation { duration: Theme.animFast } }
+                    height: Theme.barHeight - 6
+                    radius: 5
+                    color: (clockMa.containsMouse || root.calendarOpen)
+                           ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                    border.color: (clockMa.containsMouse || root.calendarOpen)
+                                  ? Qt.rgba(1, 1, 1, 0.30) : "transparent"
+                    border.width: 1
+                    Behavior on color        { ColorAnimation { duration: 100 } }
+                    Behavior on border.color { ColorAnimation { duration: 100 } }
 
                     Row {
                         id: clockRow
                         anchors.centerIn: parent
                         spacing: 7
-
                         Text {
                             text: root.currentTime
-                            color: root.calendarOpen ? Theme.red : Theme.fg
+                            color: "#fff"
                             font.family: Theme.font; font.pixelSize: Theme.fontSize
-                            font.weight: Font.Medium
+                            font.weight: Font.Bold
                             anchors.verticalCenter: parent.verticalCenter
-                            Behavior on color { ColorAnimation { duration: 150 } }
                         }
                         Rectangle {
                             width: 1; height: Theme.barHeight - 14
-                            color: Qt.rgba(0.5, 0.5, 0.5, 0.4)
+                            color: Qt.rgba(1, 1, 1, 0.18)
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
                             text: root.currentDate
-                            color: Theme.fgMuted
+                            color: "#fff"
                             font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
+                            font.weight: Font.Bold
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -196,6 +223,84 @@ PanelWindow {
                         id: clockMa; anchors.fill: parent
                         hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: root.toggleCalendar()
+                    }
+                }
+
+                // Bouton média — ancré à droite de l'horloge, se décale seul
+                Item {
+                    id: mediaBtn
+                    anchors.left:           clockRect.right
+                    anchors.leftMargin:     4
+                    anchors.verticalCenter: parent.verticalCenter
+                    width:  root.isPlayingMedia ? 38 : Theme.barHeight - 10
+                    height: Theme.barHeight
+                    Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width:  parent.width + 2
+                        height: Theme.barHeight - 6
+                        radius: 5
+                        color: mediaMa.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
+                        border.color: mediaMa.containsMouse ? Qt.rgba(1,1,1,0.30) : "transparent"
+                        border.width: 1
+                        Behavior on color        { ColorAnimation { duration: 100 } }
+                        Behavior on border.color { ColorAnimation { duration: 100 } }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "󰎇"
+                        color: "#fff"
+                        font.family: Theme.fontMono
+                        font.pixelSize: Theme.iconSize
+                        opacity: root.isPlayingMedia ? 0.0 : 1.0
+                        Behavior on opacity { NumberAnimation { duration: 250 } }
+                    }
+
+                    Row {
+                        id: visualizer
+                        anchors.centerIn: parent
+                        spacing: 2
+                        opacity: root.isPlayingMedia ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                        Repeater {
+                            model: 5
+                            delegate: Rectangle {
+                                required property int index
+                                width:  2.5
+                                radius: 1.5
+                                color:  "#fff"
+                                anchors.verticalCenter: parent.verticalCenter
+                                property real minH: 2
+                                property real maxH: [10, 14, 16, 12, 8][index]
+                                height: minH
+                                SequentialAnimation on height {
+                                    running: root.isPlayingMedia
+                                    loops:   Animation.Infinite
+                                    PauseAnimation { duration: [0, 140, 60, 200, 100][index] }
+                                    NumberAnimation { to: [maxH*0.9,maxH,maxH*0.7,maxH*0.85,maxH][index];       duration: [180,220,160,200,170][index]; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: [minH+2,minH,minH+3,minH+1,minH+4][index];            duration: [140,180,130,160,120][index]; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: [maxH*0.6,maxH*0.8,maxH,maxH*0.5,maxH*0.9][index];   duration: [200,150,210,170,190][index]; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: [minH+1,minH+3,minH,minH+2,minH][index];              duration: [160,130,150,140,180][index]; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: [maxH*0.75,maxH*0.5,maxH*0.85,maxH,maxH*0.6][index]; duration: [190,210,175,185,155][index]; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: minH; duration: [130,150,140,160,120][index]; easing.type: Easing.InOutSine }
+                                }
+                                NumberAnimation on height {
+                                    running: !root.isPlayingMedia
+                                    to: 2; duration: 300; easing.type: Easing.OutCubic
+                                }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: mediaMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape:  Qt.PointingHandCursor
+                        onClicked:    root.toggleMedia()
                     }
                 }
             }
@@ -206,27 +311,22 @@ PanelWindow {
             RowLayout {
                 spacing: 2
 
-                // Contrôle multimédia — visible si player actif
-                BarButton {
-                    visible: root.hasMedia
-                    icon: {
-                        if (!root.activePlayer) return "󰎇"
-                        return root.activePlayer.playbackStatus === MprisPlaybackStatus.Playing ? "󰎇" : "󰎊"
-                    }
-                    iconColor: root.mediaOpen ? Theme.red : Theme.fg
-                    active: root.mediaOpen
-                    onClicked: root.toggleMedia()
-                }
-
-                // Batterie dans un cadre
-                Rectangle {
+                Item {
                     anchors.verticalCenter: parent.verticalCenter
-                    width:  batIndicator.implicitWidth + 10
-                    height: Theme.barHeight - 8
-                    radius: 5
-                    color:  Theme.glassHover
-                    border.color: Theme.border
-                    border.width: 1
+                    height: Theme.barHeight
+                    width:  batIndicator.implicitWidth + 16
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width:  parent.width
+                        height: Theme.barHeight - 6
+                        radius: 5
+                        color:        batHoverMa.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
+                        border.color: batHoverMa.containsMouse ? Qt.rgba(1,1,1,0.30) : "transparent"
+                        border.width: 1
+                        Behavior on color        { ColorAnimation { duration: 100 } }
+                        Behavior on border.color { ColorAnimation { duration: 100 } }
+                    }
 
                     BatteryIndicator {
                         id: batIndicator
@@ -234,20 +334,25 @@ PanelWindow {
                         percent:  root.batteryPercent
                         charging: root.batteryCharging
                     }
+
+                    MouseArea {
+                        id: batHoverMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                    }
                 }
 
-                // Bouton Centre de contrôle (⊞ macOS-like)
                 BarButton {
                     icon: "󰍜"
-                    iconColor: root.qsOpen ? Theme.red : Theme.fg
+                    iconColor: root.qsOpen ? Theme.red : "#fff"
                     active: root.qsOpen
                     onClicked: root.toggleQs()
                 }
 
-                // Toggle thème
                 BarButton {
                     icon: Theme.isDark ? "󰖔" : "󰖙"
-                    iconColor: Theme.fgMuted
+                    iconColor: "#fff"
                     active: false
                     onClicked: Theme.toggleTheme()
                 }
@@ -255,11 +360,12 @@ PanelWindow {
         }
     }
 
+
     // ── Composant BarButton ───────────────────────────────────────────────
     component BarButton: Item {
         id: btn
         property string icon: ""
-        property color  iconColor: Theme.fg
+        property color  iconColor: "#fff"
         property bool   active: false
         signal clicked()
         signal wheelUp()
@@ -271,10 +377,24 @@ PanelWindow {
         Rectangle {
             anchors.centerIn: parent
             width:  parent.implicitWidth - 4
-            height: Theme.barHeight - 4
-            radius: 6
-            color:  btnMa.containsMouse || btn.active ? Theme.glassHover : "transparent"
-            Behavior on color { ColorAnimation { duration: Theme.animFast } }
+            height: Theme.barHeight - 6
+            radius: 5
+            color:       "transparent"
+            border.color: (btnMa.containsMouse || btn.active)
+                          ? Qt.rgba(1, 1, 1, 0.30)
+                          : "transparent"
+            border.width: 1
+            Behavior on border.color { ColorAnimation { duration: 100 } }
+
+            // Fond très légèrement teinté au hover
+            Rectangle {
+                anchors.fill: parent
+                radius: parent.radius
+                color: (btnMa.containsMouse || btn.active)
+                       ? Qt.rgba(1, 1, 1, 0.08)
+                       : "transparent"
+                Behavior on color { ColorAnimation { duration: 100 } }
+            }
 
             Text {
                 anchors.centerIn: parent

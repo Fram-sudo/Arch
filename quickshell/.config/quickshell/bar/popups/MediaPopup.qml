@@ -1,6 +1,7 @@
-// MediaPopup.qml — Contrôle multimédia MPRIS style macOS Tahoe
+// MediaPopup.qml — Contrôle média via playerctl (contourne bug Quickshell/Firefox)
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs
 
@@ -8,26 +9,25 @@ PanelWindow {
     id: win
     property bool open: false
 
+    property int mediaCenterX: win.width / 2
+
     signal closeRequested()
 
-    // Plein écran pour capturer les clics hors popup
     anchors.top:    true
     anchors.left:   true
     anchors.right:  true
     anchors.bottom: true
 
-    property int panelWidth:  300
-    property int panelRight:  8
+    property int panelWidth:  280
     property int panelTop:    Theme.barHeight + 6
-    property int contentH:    180
+    property int panelLeft:   Math.min(Math.max(8, mediaCenterX - panelWidth / 2), win.width - panelWidth - 8)
+    property int contentH:    playerCol.implicitHeight + 2 * Theme.popupPadding
 
-    // MouseArea plein écran — ferme si clic hors du rectangle visuel
     MouseArea {
         anchors.fill: parent
         onClicked: mouse => {
-            var panelX = win.width - win.panelRight - win.panelWidth
-            var inPanel = (mouse.x >= panelX &&
-                           mouse.x <= panelX + win.panelWidth &&
+            var inPanel = (mouse.x >= win.panelLeft &&
+                           mouse.x <= win.panelLeft + win.panelWidth &&
                            mouse.y >= win.panelTop &&
                            mouse.y <= win.panelTop + win.contentH)
             if (!inPanel) win.closeRequested()
@@ -40,44 +40,147 @@ PanelWindow {
     aboveWindows:  true
     visible:       open || slideAnim.running
 
-    // ── Player actif ──────────────────────────────────────────────────────
-    property var player: {
-        var players = MprisController.players
-        for (var i = 0; i < players.length; i++) {
-            if (players[i].playbackStatus === MprisPlaybackStatus.Playing)
-                return players[i]
-        }
-        return players.length > 0 ? players[0] : null
-    }
+    // ── Données récupérées via playerctl ──────────────────────────────────
+    // Liste des players : [ { name, status, title, artist, artUrl, length, position } ]
+    property var players: []
 
-    property bool  isPlaying:  player && player.playbackStatus === MprisPlaybackStatus.Playing
-    property string trackTitle:  player && player.trackTitle  ? player.trackTitle  : "Aucun média"
-    property string trackArtist: player && player.trackArtists ? player.trackArtists.join(", ") : ""
-    property string trackAlbum:  player && player.trackAlbum  ? player.trackAlbum  : ""
-    property string artUrl:      player && player.trackArtUrl  ? player.trackArtUrl : ""
-    property real   position:    player && player.position     ? player.position    : 0
-    property real   length:      player && player.trackLength  ? player.trackLength : 1
-    property real   progress:    length > 0 ? Math.min(1.0, position / length) : 0
-
-    // Timer pour mettre à jour la position
+    // Rafraîchissement
     Timer {
-        interval: 500; running: win.open && win.isPlaying; repeat: true
-        onTriggered: { if (win.player) win.player.updatePosition() }
+        id: refreshTimer
+        interval: 2000
+        running: win.open
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: listProc.running = true
     }
 
-    function formatTime(ms) {
-        var s = Math.floor(ms / 1000)
+    // Étape 1 : récupère la liste des players
+    Process {
+        id: listProc
+        command: ["playerctl", "-l"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var names = this.text.trim().split("\n").filter(n => n.length > 0)
+                if (names.length === 0) {
+                    win.players = []
+                    return
+                }
+                metaModel.clear()
+                for (var i = 0; i < names.length; i++) {
+                    metaModel.append({ playerName: names[i] })
+                }
+                metaFetcher.currentIndex = 0
+                metaFetcher.fetchNext()
+            }
+        }
+    }
+
+    // Modèle temporaire pour itérer sur les players
+    ListModel { id: metaModel }
+
+    // Étape 2 : récupère les métadonnées de chaque player l'un après l'autre
+    QtObject {
+        id: metaFetcher
+        property int currentIndex: 0
+        property var collected: []
+
+        function fetchNext() {
+            if (currentIndex >= metaModel.count) {
+                // Merge intelligent : ne remplace que si différent
+                var prev = win.players
+                var next = collected
+                var changed = prev.length !== next.length
+                if (!changed) {
+                    for (var i = 0; i < next.length; i++) {
+                        if (!prev[i] ||
+                            prev[i].name     !== next[i].name   ||
+                            prev[i].status   !== next[i].status ||
+                            prev[i].title    !== next[i].title  ||
+                            prev[i].artist   !== next[i].artist ||
+                            Math.abs((prev[i].position||0) - (next[i].position||0)) > 2000000) {
+                            changed = true
+                            break
+                        }
+                    }
+                }
+                if (changed) win.players = next
+                return
+            }
+            var name = metaModel.get(currentIndex).playerName
+            metaProc.playerName = name
+            metaProc.command = ["playerctl", "-p", name,
+                "metadata", "--format",
+                "{{status}}|{{title}}|{{artist}}|{{mpris:artUrl}}|{{mpris:length}}|{{position}}"]
+            metaProc.running = true
+        }
+    }
+
+    Process {
+        id: metaProc
+        property string playerName: ""
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var raw   = this.text.trim()
+                var parts = raw.split("|")
+                var entry = {
+                    name:     metaProc.playerName,
+                    status:   parts[0] || "Stopped",
+                    title:    parts[1] || "",
+                    artist:   parts[2] || "",
+                    artUrl:   parts[3] || "",
+                    length:   parseInt(parts[4]) || 0,
+                    position: parseInt(parts[5]) || 0
+                }
+                metaFetcher.collected = metaFetcher.collected.concat([entry])
+                metaFetcher.currentIndex++
+                metaFetcher.fetchNext()
+            }
+        }
+        onExited: code => {
+            if (code !== 0) {
+                metaFetcher.currentIndex++
+                metaFetcher.fetchNext()
+            }
+        }
+    }
+
+    // Reset collected à chaque refresh
+    Connections {
+        target: listProc
+        function onRunningChanged() {
+            if (listProc.running) metaFetcher.collected = []
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function formatTime(us) {
+        if (!us || us <= 0) return "0:00"
+        var s = Math.floor(us / 1000000)
         var m = Math.floor(s / 60)
         s = s % 60
         return m + ":" + (s < 10 ? "0" + s : s)
     }
 
+    function serviceInfo(playerName) {
+        var n = playerName.toLowerCase()
+        if (n.indexOf("spotify")   !== -1) return { icon: "󰓇", color: "#1DB954", label: "Spotify"   }
+        if (n.indexOf("deezer")    !== -1) return { icon: "󰓇", color: "#A238FF", label: "Deezer"    }
+        if (n.indexOf("vlc")       !== -1) return { icon: "󰕼", color: "#FF8800", label: "VLC"       }
+        if (n.indexOf("mpv")       !== -1) return { icon: "󰐊", color: "#6A9FB5", label: "mpv"       }
+        if (n.indexOf("rhythmbox") !== -1) return { icon: "󰝚", color: "#E84393", label: "Rhythmbox" }
+        if (n.indexOf("firefox")   !== -1) return { icon: "󰈹", color: "#FF7139", label: "Firefox"   }
+        if (n.indexOf("chromium")  !== -1) return { icon: "󰊯", color: "#4285F4", label: "Chromium"  }
+        if (n.indexOf("chrome")    !== -1) return { icon: "󰊯", color: "#4285F4", label: "Chrome"    }
+        return { icon: "󰎇", color: Theme.red, label: playerName }
+    }
+
+    // ── Rendu ─────────────────────────────────────────────────────────────
     Item {
         anchors.fill: parent
 
         Rectangle {
             id: mediaPanel
-            x:      win.width - win.panelRight - win.panelWidth
+            x:      win.panelLeft
             width:  win.panelWidth
             height: win.contentH
             radius: Theme.popupRadius
@@ -94,30 +197,12 @@ PanelWindow {
                 }
             }
             opacity: win.open ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
-
-            // Fond artwork flouté (si disponible)
-            Rectangle {
-                anchors.fill: parent; radius: parent.radius
-                color: "transparent"
-                clip: true
-
-                Image {
-                    anchors.fill: parent
-                    source: win.artUrl
-                    fillMode: Image.PreserveAspectCrop
-                    opacity: 0.12
-                    visible: win.artUrl !== ""
-                    layer.enabled: true
-                    layer.effect: null // blur workaround
-                }
-            }
+            Behavior on opacity { NumberAnimation { duration: 280 } }
 
             // Glossy
             Rectangle {
-                z: 0
                 anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-                height: parent.height * Theme.popupGlossHeight; radius: parent.radius
+                height: parent.height * Theme.popupGlossHeight; radius: parent.radius; z: 0
                 gradient: Gradient {
                     orientation: Gradient.Vertical
                     GradientStop { position: 0.0; color: Theme.popupGlossTop }
@@ -125,205 +210,204 @@ PanelWindow {
                 }
             }
 
-            // Contenu
-            Item {
+            Column {
+                id: playerCol
                 z: 1
-                anchors.fill: parent
+                anchors.left:    parent.left
+                anchors.right:   parent.right
+                anchors.top:     parent.top
                 anchors.margins: Theme.popupPadding
+                spacing: 8
 
-                Row {
-                    id: topRow
-                    width: parent.width
-                    spacing: 12
-
-                    // Pochette album
-                    Rectangle {
-                        width: 64; height: 64; radius: 10
-                        color: Theme.innerBg
-                        border.color: Theme.innerBorder; border.width: 1
-                        clip: true
-
-                        Image {
-                            anchors.fill: parent
-                            source: win.artUrl
-                            fillMode: Image.PreserveAspectCrop
-                            visible: win.artUrl !== ""
-                        }
-
-                        // Icône fallback
-                        Text {
-                            anchors.centerIn: parent
-                            visible: win.artUrl === ""
-                            text: "󰎇"
-                            color: Theme.popupFgDim
-                            font.family: Theme.fontMono; font.pixelSize: 28
-                        }
-                    }
-
-                    // Infos piste
-                    Column {
-                        width: parent.width - 64 - 12
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 3
-
-                        // App source
-                        Text {
-                            text: win.player ? win.player.identity : "Aucun player"
-                            color: Theme.red
-                            font.family: Theme.font; font.pixelSize: 9
-                            font.weight: Font.SemiBold
-                        }
-
-                        // Titre
-                        Text {
-                            text: win.trackTitle
-                            color: Theme.popupFg
-                            font.family: Theme.font; font.pixelSize: Theme.fontSize
-                            font.weight: Font.SemiBold
-                            width: parent.width; elide: Text.ElideRight
-                        }
-
-                        // Artiste
-                        Text {
-                            text: win.trackArtist
-                            color: Theme.popupFgMuted
-                            font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
-                            width: parent.width; elide: Text.ElideRight
-                            visible: win.trackArtist !== ""
-                        }
-
-                        // Album
-                        Text {
-                            text: win.trackAlbum
-                            color: Theme.popupFgDim
-                            font.family: Theme.font; font.pixelSize: Theme.fontSizeXs
-                            width: parent.width; elide: Text.ElideRight
-                            visible: win.trackAlbum !== ""
-                        }
+                // Aucun player
+                Item {
+                    width: parent.width; height: 36
+                    visible: win.players.length === 0
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Aucun média en cours"
+                        color: Theme.popupFgMuted
+                        font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
                     }
                 }
 
-                // Barre de progression
-                Column {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: controlsRow.top
-                    anchors.bottomMargin: 10
-                    spacing: 4
+                // Un item par player
+                Repeater {
+                    model: win.players
 
-                    // Track slider
-                    Item {
-                        width: parent.width; height: 16
+                    delegate: Item {
+                        required property var modelData
+                        property var p:   modelData
+                        property var svc: win.serviceInfo(p.name)
+                        property bool playing: p.status === "Playing"
+                        property real prog: p.length > 0 ? Math.min(1, p.position / p.length) : 0
 
-                        // Fond track
+                        width: parent.width
+                        height: itemCol.implicitHeight + 16
+
                         Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width; height: 3; radius: 2
-                            color: Theme.sliderTrack
-                        }
-                        // Rempli
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width * win.progress; height: 3; radius: 2
-                            color: Theme.red
-                            Behavior on width { NumberAnimation { duration: 400 } }
-                        }
-                        // Knob
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            x: Math.max(0, Math.min(parent.width - width, parent.width * win.progress - width/2))
-                            width: 10; height: 10; radius: 5
-                            color: Theme.sliderKnob
-                            Behavior on x { NumberAnimation { duration: 400 } }
-                        }
-                        MouseArea {
                             anchors.fill: parent
-                            onClicked: mouse => {
-                                if (win.player && win.length > 0) {
-                                    var ratio = Math.max(0, Math.min(1, mouse.x / width))
-                                    win.player.position = ratio * win.length
+                            radius: 10
+                            color: Theme.innerBg
+                            border.color: Theme.innerBorder; border.width: 1
+                            clip: true
+
+                            // Fond artwork flouté
+                            Image {
+                                anchors.fill: parent
+                                source: p.artUrl
+                                fillMode: Image.PreserveAspectCrop
+                                opacity: 0.15
+                                visible: p.artUrl !== ""
+                                smooth: true
+                            }
+
+                            Column {
+                                id: itemCol
+                                anchors.left:    parent.left
+                                anchors.right:   parent.right
+                                anchors.top:     parent.top
+                                anchors.margins: 8
+                                spacing: 6
+
+                                // Ligne principale : pochette | infos | play/pause
+                                Row {
+                                    width: parent.width
+                                    spacing: 8
+
+                                    // Pochette / logo
+                                    Rectangle {
+                                        width: 44; height: 44; radius: 7
+                                        color: Qt.rgba(0,0,0,0.3)
+                                        clip: true
+                                        anchors.verticalCenter: parent.verticalCenter
+
+                                        Image {
+                                            anchors.fill: parent
+                                            source: p.artUrl
+                                            fillMode: Image.PreserveAspectCrop
+                                            visible: p.artUrl !== "" && status === Image.Ready
+                                            smooth: true
+                                        }
+                                        Text {
+                                            anchors.centerIn: parent
+                                            visible: p.artUrl === ""
+                                            text: svc.icon
+                                            color: svc.color
+                                            font.family: Theme.fontMono; font.pixelSize: 22
+                                        }
+                                    }
+
+                                    // Infos
+                                    Column {
+                                        width: parent.width - 44 - 36 - 16
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 2
+
+                                        // Badge service
+                                        Row {
+                                            spacing: 3
+                                            Text {
+                                                text: svc.icon; color: svc.color
+                                                font.family: Theme.fontMono; font.pixelSize: 9
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                            Text {
+                                                text: svc.label; color: svc.color
+                                                font.family: Theme.font; font.pixelSize: 9
+                                                font.weight: Font.SemiBold
+                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                        }
+
+                                        Text {
+                                            text: p.title || "—"
+                                            color: Theme.popupFg
+                                            font.family: Theme.font; font.pixelSize: 12
+                                            font.weight: Font.SemiBold
+                                            width: parent.width; elide: Text.ElideRight
+                                        }
+                                        Text {
+                                            visible: p.artist !== ""
+                                            text: p.artist
+                                            color: Theme.popupFgMuted
+                                            font.family: Theme.font; font.pixelSize: Theme.fontSizeXs
+                                            width: parent.width; elide: Text.ElideRight
+                                        }
+                                    }
+
+                                    // Bouton play/pause
+                                    Rectangle {
+                                        width: 32; height: 32; radius: 16
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        color: ppMa.containsMouse
+                                               ? Qt.lighter(svc.color, 1.2) : svc.color
+                                        Behavior on color { ColorAnimation { duration: 100 } }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: playing ? "󰏤" : "󰐊"
+                                            color: "#fff"
+                                            font.family: Theme.fontMono; font.pixelSize: 12
+                                        }
+                                        MouseArea {
+                                            id: ppMa; anchors.fill: parent
+                                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                            onClicked: Quickshell.execDetached(
+                                                ["playerctl", "-p", p.name, "play-pause"])
+                                        }
+                                    }
+                                }
+
+                                // Barre de progression
+                                Item {
+                                    width: parent.width; height: 8
+
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: parent.width; height: 3; radius: 2
+                                        color: Theme.sliderTrack
+                                    }
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: Math.max(3, parent.width * prog)
+                                        height: 3; radius: 2
+                                        color: svc.color
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: mouse => {
+                                            var ratio = Math.max(0, Math.min(1, mouse.x / width))
+                                            var pos   = Math.round(ratio * p.length)
+                                            Quickshell.execDetached(
+                                                ["playerctl", "-p", p.name,
+                                                 "position", String(Math.round(pos / 1000000))])
+                                        }
+                                    }
+                                }
+
+                                // Temps
+                                Row {
+                                    width: parent.width
+                                    Text {
+                                        text: win.formatTime(p.position)
+                                        color: Theme.popupFgDim
+                                        font.family: Theme.font; font.pixelSize: 9
+                                    }
+                                    Item { width: parent.width - tl.implicitWidth - tr.implicitWidth; id: tl }
+                                    Text {
+                                        id: tr
+                                        text: win.formatTime(p.length)
+                                        color: Theme.popupFgDim
+                                        font.family: Theme.font; font.pixelSize: 9
+                                    }
                                 }
                             }
                         }
                     }
-
-                    // Temps
-                    Row {
-                        width: parent.width
-                        Text {
-                            text: win.formatTime(win.position)
-                            color: Theme.popupFgMuted
-                            font.family: Theme.font; font.pixelSize: 9
-                        }
-                        Item { width: 1; implicitWidth: parent.width - posCur.implicitWidth - posTotal.implicitWidth }
-                        Text {
-                            id: posTotal
-                            text: win.formatTime(win.length)
-                            color: Theme.popupFgMuted
-                            font.family: Theme.font; font.pixelSize: 9
-                        }
-                    }
-                }
-
-                // Boutons de contrôle
-                Row {
-                    id: controlsRow
-                    anchors.bottom: parent.bottom
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 8
-
-                    // Précédent
-                    MediaButton {
-                        icon: "󰒮"
-                        onClicked: { if (win.player) win.player.previous() }
-                    }
-
-                    // Play/Pause (plus grand)
-                    MediaButton {
-                        icon: win.isPlaying ? "󰏤" : "󰐊"
-                        size: 38
-                        iconSize: 16
-                        highlighted: true
-                        onClicked: { if (win.player) win.player.togglePlaying() }
-                    }
-
-                    // Suivant
-                    MediaButton {
-                        icon: "󰒭"
-                        onClicked: { if (win.player) win.player.next() }
-                    }
                 }
             }
-        }
-    }
-
-    // ── Composant MediaButton ─────────────────────────────────────────────
-    component MediaButton: Rectangle {
-        id: mbtn
-        property string icon: ""
-        property int    size: 32
-        property int    iconSize: 13
-        property bool   highlighted: false
-
-        signal clicked()
-
-        width: size; height: size; radius: size / 2
-        color: highlighted
-               ? (mbtnMa.containsMouse ? Theme.redBright : Theme.red)
-               : (mbtnMa.containsMouse ? Theme.glassHover : Theme.innerBg)
-        border.color: highlighted ? "transparent" : Theme.innerBorder
-        border.width: 1
-        Behavior on color { ColorAnimation { duration: Theme.animFast } }
-
-        Text {
-            anchors.centerIn: parent; text: mbtn.icon
-            color: mbtn.highlighted ? "#fff" : Theme.popupFg
-            font.family: Theme.fontMono; font.pixelSize: mbtn.iconSize
-        }
-        MouseArea {
-            id: mbtnMa; anchors.fill: parent
-            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: mbtn.clicked()
         }
     }
 }
