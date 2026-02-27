@@ -28,11 +28,13 @@ PanelWindow {
     property bool calendarOpen: false
     property bool qsOpen:       false
     property bool mediaOpen:    false
+    property bool powerOpen:    false
 
-    function closeAll()       { calendarOpen = false; qsOpen = false; mediaOpen = false }
+    function closeAll()       { calendarOpen = false; qsOpen = false; mediaOpen = false; powerOpen = false }
     function toggleCalendar() { var v = !calendarOpen; closeAll(); calendarOpen = v }
     function toggleQs()       { var v = !qsOpen;       closeAll(); qsOpen       = v }
     function toggleMedia()    { var v = !mediaOpen;    closeAll(); mediaOpen    = v }
+    function togglePower()    { var v = !powerOpen;    closeAll(); powerOpen    = v }
 
     // ── Popups ─────────────────────────────────────────────────────────────
     CalendarPopup {
@@ -46,13 +48,31 @@ PanelWindow {
         open: root.qsOpen; onOpenChanged: root.qsOpen = open
         onCloseRequested: root.qsOpen = false
     }
+    // Centres X des boutons (calculés après rendu via Component.onCompleted + timer)
+    property int mediaBtnCenterX: root.screen ? root.screen.width / 2 + 60 : 0
+    property int powerBtnCenterX: root.screen ? root.screen.width - 22 : 0
+
+    Timer {
+        interval: 100; running: true; repeat: false
+        onTriggered: {
+            var pt1 = mediaBtn.mapToGlobal(mediaBtn.width / 2, 0)
+            root.mediaBtnCenterX = pt1.x
+            var pt2 = powerBtn.mapToGlobal(powerBtn.width / 2, 0)
+            root.powerBtnCenterX = pt2.x
+        }
+    }
+
     MediaPopup {
         id: mediaWin; screen: root.screen
         open: root.mediaOpen; onOpenChanged: root.mediaOpen = open
         onCloseRequested: root.mediaOpen = false
-        mediaCenterX: mediaBtn.visible
-                      ? mediaBtn.mapToItem(null, mediaBtn.width / 2, 0).x
-                      : (root.screen ? root.screen.width / 2 : 0)
+        mediaCenterX: root.mediaBtnCenterX
+    }
+    PowerMenu {
+        id: powerWin; screen: root.screen
+        open: root.powerOpen; onOpenChanged: root.powerOpen = open
+        onCloseRequested: root.powerOpen = false
+        buttonCenterX: root.powerBtnCenterX
     }
 
     // ── Volume Pipewire ───────────────────────────────────────────────────
@@ -355,6 +375,40 @@ PanelWindow {
                     iconColor: "#fff"
                     active: false
                     onClicked: Theme.toggleTheme()
+                }
+
+                // Bouton Power — tout à droite
+                Item {
+                    id: powerBtn
+                    anchors.verticalCenter: parent.verticalCenter
+                    width:  Theme.barHeight - 10
+                    height: Theme.barHeight
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width:  parent.width
+                        height: Theme.barHeight - 6
+                        radius: 5
+                        color:        powerMa.containsMouse || root.powerOpen ? Qt.rgba(1,1,1,0.08) : "transparent"
+                        border.color: powerMa.containsMouse || root.powerOpen ? Qt.rgba(1,1,1,0.30) : "transparent"
+                        border.width: 1
+                        Behavior on color        { ColorAnimation { duration: 100 } }
+                        Behavior on border.color { ColorAnimation { duration: 100 } }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text:  "󰐥"
+                        color: "#fff"
+                        font.family:    Theme.fontMono
+                        font.pixelSize: Theme.iconSize
+                    }
+
+                    MouseArea {
+                        id: powerMa; anchors.fill: parent
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: root.togglePower()
+                    }
                 }
             }
         }
