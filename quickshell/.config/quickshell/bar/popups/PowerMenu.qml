@@ -92,8 +92,8 @@ PanelWindow {
                     delegate: Rectangle {
                         required property var modelData
                         width: parent.width; height: 40; radius: 8
-                        color: entryMa.containsMouse ? Qt.rgba(1,1,1,0.12) : "transparent"
-                        border.color: entryMa.containsMouse ? Qt.rgba(1,1,1,0.20) : "transparent"
+                        color: entryMa.containsMouse ? Theme.glassHover : "transparent"
+                        border.color: entryMa.containsMouse ? Theme.border : "transparent"
                         border.width: 1
                         Behavior on color        { ColorAnimation { duration: 100 } }
                         Behavior on border.color { ColorAnimation { duration: 100 } }
@@ -105,13 +105,13 @@ PanelWindow {
                             spacing: 10
                             Text {
                                 text: modelData.icon
-                                color: "#fff"
+                                color: Theme.popupFg
                                 font.family: Theme.fontMono; font.pixelSize: Theme.iconSize
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                             Text {
                                 text: modelData.label
-                                color: entryMa.containsMouse ? "#fff" : Qt.rgba(1,1,1,0.75)
+                                color: entryMa.containsMouse ? Theme.popupFg : Theme.popupFgMuted
                                 font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
                                 font.weight: Font.Medium
                                 anchors.verticalCenter: parent.verticalCenter

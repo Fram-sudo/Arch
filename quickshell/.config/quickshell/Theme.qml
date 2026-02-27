@@ -26,7 +26,16 @@ Singleton {
     readonly property color _dark_fgDim:         "#3D3B3B"
     readonly property color _dark_separator:     Qt.rgba(1, 1, 1, 0.06)
     readonly property color _dark_border:        Qt.rgba(1, 1, 1, 0.10)
-    readonly property color _dark_barBg:         Qt.rgba(10/255, 9/255, 9/255, 0.88)
+    // Barre : noir opaque pur
+    readonly property color _dark_barBg:         "#000000"
+    readonly property color _dark_barFg:         "#FFFFFF"
+    readonly property color _dark_barHover:      Qt.rgba(1, 1, 1, 0.08)
+    readonly property color _dark_barHoverBorder:Qt.rgba(1, 1, 1, 0.30)
+    readonly property color _dark_barSeparator:  Qt.rgba(1, 1, 1, 0.18)
+    readonly property color _dark_barWs:         "#FFFFFF"
+    readonly property color _dark_barWsBusy:     Qt.rgba(1, 1, 1, 0.45)
+    readonly property color _dark_barWsEmpty:    Qt.rgba(1, 1, 1, 0.18)
+    // Popups & dock
     readonly property color _dark_popupBg:       Qt.rgba(18/255, 17/255, 17/255, 0.96)
     readonly property color _dark_glassHover:    Qt.rgba(1, 1, 1, 0.08)
     readonly property color _dark_glassPressed:  Qt.rgba(1, 1, 1, 0.13)
@@ -52,11 +61,20 @@ Singleton {
     readonly property color _light_fgDim:         "#C5C0BF"
     readonly property color _light_separator:     Qt.rgba(0, 0, 0, 0.07)
     readonly property color _light_border:        Qt.rgba(0, 0, 0, 0.10)
-    readonly property color _light_barBg:         Qt.rgba(240/255, 237/255, 236/255, 0.88)
+    // Barre : gris chaud semi-transparent
+    readonly property color _light_barBg:         Qt.rgba(210/255, 206/255, 204/255, 0.82)
+    readonly property color _light_barFg:         "#1A1818"
+    readonly property color _light_barHover:      Qt.rgba(0, 0, 0, 0.07)
+    readonly property color _light_barHoverBorder:Qt.rgba(0, 0, 0, 0.22)
+    readonly property color _light_barSeparator:  Qt.rgba(0, 0, 0, 0.20)
+    readonly property color _light_barWs:         "#1A1818"
+    readonly property color _light_barWsBusy:     Qt.rgba(0, 0, 0, 0.40)
+    readonly property color _light_barWsEmpty:    Qt.rgba(0, 0, 0, 0.18)
+    // Popups & dock
     readonly property color _light_popupBg:       Qt.rgba(244/255, 241/255, 240/255, 0.97)
     readonly property color _light_glassHover:    Qt.rgba(0, 0, 0, 0.06)
     readonly property color _light_glassPressed:  Qt.rgba(0, 0, 0, 0.10)
-    readonly property color _light_dockBg:        Qt.rgba(230/255, 226/255, 225/255, 0.82)
+    readonly property color _light_dockBg:        Qt.rgba(215/255, 211/255, 209/255, 0.82)
     readonly property color _light_innerBg:       Qt.rgba(0, 0, 0, 0.03)
     readonly property color _light_innerBorder:   Qt.rgba(0, 0, 0, 0.07)
     readonly property color _light_sliderTrack:   Qt.rgba(0, 0, 0, 0.10)
@@ -91,7 +109,18 @@ Singleton {
     readonly property color fgDim:        isDark ? _dark_fgDim        : _light_fgDim
     readonly property color separator:    isDark ? _dark_separator    : _light_separator
     readonly property color border:       isDark ? _dark_border       : _light_border
-    readonly property color barBg:        isDark ? _dark_barBg        : _light_barBg
+
+    // ── Barre (propriétés dédiées) ────────────────────────────────────────
+    readonly property color barBg:          isDark ? _dark_barBg          : _light_barBg
+    readonly property color barFg:          isDark ? _dark_barFg          : _light_barFg
+    readonly property color barHover:       isDark ? _dark_barHover       : _light_barHover
+    readonly property color barHoverBorder: isDark ? _dark_barHoverBorder : _light_barHoverBorder
+    readonly property color barSeparator:   isDark ? _dark_barSeparator   : _light_barSeparator
+    readonly property color barWs:          isDark ? _dark_barWs          : _light_barWs
+    readonly property color barWsBusy:      isDark ? _dark_barWsBusy      : _light_barWsBusy
+    readonly property color barWsEmpty:     isDark ? _dark_barWsEmpty     : _light_barWsEmpty
+
+    // ── Popups & dock ─────────────────────────────────────────────────────
     readonly property color popupBg:      isDark ? _dark_popupBg      : _light_popupBg
     readonly property color glassHover:   isDark ? _dark_glassHover   : _light_glassHover
     readonly property color glassPressed: isDark ? _dark_glassPressed : _light_glassPressed

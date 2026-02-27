@@ -104,7 +104,7 @@ PanelWindow {
         id: dockBg
 
         property int itemSzBase:     Theme.dockHeight - 12
-        property int itemSzMax:      Math.round(itemSzBase * 1.45)  // taille max fixe
+        property int itemSzMax:      Math.round(itemSzBase * 1.2)  // taille max fixe
         property int itemSpacing:    8
         property int cnt:            appsModel.count
         property int dragIndex:      -1
@@ -220,9 +220,9 @@ PanelWindow {
                         x: (dockItem.width - width) / 2
                         // bas de l'icône à taille max = dockItem.height - (itemSzMax - 8) - 2
                         // on remonte encore de height + 6px de gap
-                        y: dockItem.height - (dockBg.itemSzMax - 10) - 2 - height - 0
+                        y: dockItem.height - (dockBg.itemSzMax - 2) - 2 - height - 0
                         z: 20
-                        width:  ttLabel.implicitWidth + 14
+                        width:  ttLabel.implicitWidth + 24
                         height: 20
                         radius: 6
                         color:  Theme.popupBg
@@ -292,25 +292,6 @@ PanelWindow {
                         Behavior on height  { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                         Behavior on color   { ColorAnimation  { duration: 150 } }
                         Behavior on opacity { NumberAnimation { duration: 200 } }
-                    }
-
-                    // ── Drag ──────────────────────────────────────────────
-                    DragHandler {
-                        id: dragHandler
-                        xAxis.enabled: true
-                        yAxis.enabled: false
-                        onActiveChanged: {
-                            if (active) {
-                                dockBg.dragIndex = index
-                                dockItem.hovered = false
-                            } else {
-                                var step   = dockBg.itemSzBase + dockBg.itemSpacing
-                                var moved  = Math.round(dragHandler.activeTranslation.x / step)
-                                var newIdx = Math.max(0, Math.min(appsModel.count - 1, index + moved))
-                                if (newIdx !== index) appsModel.move(index, newIdx, 1)
-                                dockBg.dragIndex = -1
-                            }
-                        }
                     }
 
                     // ── Clic ──────────────────────────────────────────────

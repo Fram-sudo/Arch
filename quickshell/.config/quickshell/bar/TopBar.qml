@@ -113,7 +113,8 @@ PanelWindow {
     // ── Fond barre ────────────────────────────────────────────────────────
     Rectangle {
         anchors.fill: parent
-        color: "#000000"
+        color: Theme.barBg
+        Behavior on color { ColorAnimation { duration: Theme.animNormal } }
 
         // Bordure basse subtile
         Rectangle {
@@ -137,7 +138,7 @@ PanelWindow {
                 // Bouton logo Arch → ouvre rofi
                 BarButton {
                     icon: "󰣇"
-                    iconColor: "#fff"
+                    iconColor: Theme.barFg
                     active: false
                     onClicked: {
                         root.closeAll()
@@ -177,7 +178,7 @@ PanelWindow {
                                     width:  parent.width
                                     height: active ? 5 : (busy ? 3 : 2)
                                     radius: height / 2
-                                    color:  active ? "#fff" : (busy ? Qt.rgba(1,1,1,0.45) : Qt.rgba(1,1,1,0.18))
+                                    color:  active ? Theme.barWs : (busy ? Theme.barWsBusy : Theme.barWsEmpty)
                                     Behavior on width  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
                                     Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                                     Behavior on color  { ColorAnimation  { duration: 180 } }
@@ -208,9 +209,9 @@ PanelWindow {
                     height: Theme.barHeight - 6
                     radius: 5
                     color: (clockMa.containsMouse || root.calendarOpen)
-                           ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                           ? Theme.barHover : "transparent"
                     border.color: (clockMa.containsMouse || root.calendarOpen)
-                                  ? Qt.rgba(1, 1, 1, 0.30) : "transparent"
+                                  ? Theme.barHoverBorder : "transparent"
                     border.width: 1
                     Behavior on color        { ColorAnimation { duration: 100 } }
                     Behavior on border.color { ColorAnimation { duration: 100 } }
@@ -221,19 +222,19 @@ PanelWindow {
                         spacing: 7
                         Text {
                             text: root.currentTime
-                            color: "#fff"
+                            color: Theme.barFg
                             font.family: Theme.font; font.pixelSize: Theme.fontSize
                             font.weight: Font.Bold
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Rectangle {
                             width: 1; height: Theme.barHeight - 14
-                            color: Qt.rgba(1, 1, 1, 0.18)
+                            color: Theme.barSeparator
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
                             text: root.currentDate
-                            color: "#fff"
+                            color: Theme.barFg
                             font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
                             font.weight: Font.Bold
                             anchors.verticalCenter: parent.verticalCenter
@@ -261,8 +262,8 @@ PanelWindow {
                         width:  parent.width + 2
                         height: Theme.barHeight - 6
                         radius: 5
-                        color: mediaMa.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
-                        border.color: mediaMa.containsMouse ? Qt.rgba(1,1,1,0.30) : "transparent"
+                        color: mediaMa.containsMouse ? Theme.barHover : "transparent"
+                        border.color: mediaMa.containsMouse ? Theme.barHoverBorder : "transparent"
                         border.width: 1
                         Behavior on color        { ColorAnimation { duration: 100 } }
                         Behavior on border.color { ColorAnimation { duration: 100 } }
@@ -271,7 +272,7 @@ PanelWindow {
                     Text {
                         anchors.centerIn: parent
                         text: "󰎇"
-                        color: "#fff"
+                        color: Theme.barFg
                         font.family: Theme.fontMono
                         font.pixelSize: Theme.iconSize
                         opacity: root.isPlayingMedia ? 0.0 : 1.0
@@ -291,7 +292,7 @@ PanelWindow {
                                 required property int index
                                 width:  2.5
                                 radius: 1.5
-                                color:  "#fff"
+                                color:  Theme.barFg
                                 anchors.verticalCenter: parent.verticalCenter
                                 property real minH: 2
                                 property real maxH: [10, 14, 16, 12, 8][index]
@@ -341,8 +342,8 @@ PanelWindow {
                         width:  parent.width
                         height: Theme.barHeight - 6
                         radius: 5
-                        color:        batHoverMa.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
-                        border.color: batHoverMa.containsMouse ? Qt.rgba(1,1,1,0.30) : "transparent"
+                        color:        batHoverMa.containsMouse ? Theme.barHover : "transparent"
+                        border.color: batHoverMa.containsMouse ? Theme.barHoverBorder : "transparent"
                         border.width: 1
                         Behavior on color        { ColorAnimation { duration: 100 } }
                         Behavior on border.color { ColorAnimation { duration: 100 } }
@@ -365,14 +366,14 @@ PanelWindow {
 
                 BarButton {
                     icon: "󰍜"
-                    iconColor: root.qsOpen ? Theme.red : "#fff"
+                    iconColor: root.qsOpen ? Theme.red : Theme.barFg
                     active: root.qsOpen
                     onClicked: root.toggleQs()
                 }
 
                 BarButton {
                     icon: Theme.isDark ? "󰖔" : "󰖙"
-                    iconColor: "#fff"
+                    iconColor: Theme.barFg
                     active: false
                     onClicked: Theme.toggleTheme()
                 }
@@ -389,8 +390,8 @@ PanelWindow {
                         width:  parent.width
                         height: Theme.barHeight - 6
                         radius: 5
-                        color:        powerMa.containsMouse || root.powerOpen ? Qt.rgba(1,1,1,0.08) : "transparent"
-                        border.color: powerMa.containsMouse || root.powerOpen ? Qt.rgba(1,1,1,0.30) : "transparent"
+                        color:        powerMa.containsMouse || root.powerOpen ? Theme.barHover : "transparent"
+                        border.color: powerMa.containsMouse || root.powerOpen ? Theme.barHoverBorder : "transparent"
                         border.width: 1
                         Behavior on color        { ColorAnimation { duration: 100 } }
                         Behavior on border.color { ColorAnimation { duration: 100 } }
@@ -399,7 +400,7 @@ PanelWindow {
                     Text {
                         anchors.centerIn: parent
                         text:  "󰐥"
-                        color: "#fff"
+                        color: Theme.barFg
                         font.family:    Theme.fontMono
                         font.pixelSize: Theme.iconSize
                     }
@@ -419,7 +420,7 @@ PanelWindow {
     component BarButton: Item {
         id: btn
         property string icon: ""
-        property color  iconColor: "#fff"
+        property color  iconColor: Theme.barFg
         property bool   active: false
         signal clicked()
         signal wheelUp()
@@ -435,7 +436,7 @@ PanelWindow {
             radius: 5
             color:       "transparent"
             border.color: (btnMa.containsMouse || btn.active)
-                          ? Qt.rgba(1, 1, 1, 0.30)
+                          ? Theme.barHoverBorder
                           : "transparent"
             border.width: 1
             Behavior on border.color { ColorAnimation { duration: 100 } }
@@ -445,7 +446,7 @@ PanelWindow {
                 anchors.fill: parent
                 radius: parent.radius
                 color: (btnMa.containsMouse || btn.active)
-                       ? Qt.rgba(1, 1, 1, 0.08)
+                       ? Theme.barHover
                        : "transparent"
                 Behavior on color { ColorAnimation { duration: 100 } }
             }
