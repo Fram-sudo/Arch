@@ -30,9 +30,7 @@ PanelWindow {
         width:  dockBg.width * 1
         height: 4
         radius: 2
-        color:  Theme.isDark
-                ? Qt.rgba(1, 1, 1, 0.30)
-                : Qt.rgba(0, 0, 0, 0.22)
+        color:  Qt.rgba(1, 1, 1, 0.30)
 
         property bool showing: true
 

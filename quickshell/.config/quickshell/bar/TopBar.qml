@@ -366,7 +366,7 @@ PanelWindow {
 
                 BarButton {
                     icon: "󰍜"
-                    iconColor: root.qsOpen ? Theme.red : Theme.barFg
+                    iconColor: Theme.barFg
                     active: root.qsOpen
                     onClicked: root.toggleQs()
                 }
@@ -484,8 +484,10 @@ PanelWindow {
             if (percent > 15)   return Theme.gold
             return Theme.red
         }
+        // En light : texte % toujours vert gras pour lisibilite
+        property color textColor: Theme.isDark ? fillColor : "#4CAF50"
 
-        implicitWidth:  batBody.width + 6 + batPct.implicitWidth
+        implicitWidth:  batBody.width + 5 + batPct.width
         implicitHeight: Theme.barHeight
 
         // ── Corps de la batterie (horizontal) ────────────────────────────
@@ -503,7 +505,9 @@ PanelWindow {
                 width: 20
                 radius: 2.5
                 color:  "transparent"
-                border.color: Qt.rgba(bat.fillColor.r, bat.fillColor.g, bat.fillColor.b, 0.55)
+                border.color: Theme.isDark
+                               ? Qt.rgba(bat.fillColor.r, bat.fillColor.g, bat.fillColor.b, 0.55)
+                               : Qt.rgba(0, 0, 0, 0.75)
                 border.width: 1.5
                 Behavior on border.color { ColorAnimation { duration: 400 } }
 
@@ -539,23 +543,34 @@ PanelWindow {
                 width:  2.5
                 height: 5
                 radius: 1
-                color:  Qt.rgba(bat.fillColor.r, bat.fillColor.g, bat.fillColor.b, 0.55)
+                color:  Theme.isDark
+                        ? Qt.rgba(bat.fillColor.r, bat.fillColor.g, bat.fillColor.b, 0.55)
+                        : Qt.rgba(0, 0, 0, 0.75)
                 Behavior on color { ColorAnimation { duration: 400 } }
             }
         }
 
-        // Pourcentage
-        Text {
+        // Pourcentage — badge pill coloré (dark & light)
+        Rectangle {
             id: batPct
-            anchors.left:            batBody.right
-            anchors.leftMargin:      6
-            anchors.verticalCenter:  parent.verticalCenter
-            text:  bat.percent + "%"
-            color: bat.fillColor
-            font.family:  Theme.font
-            font.pixelSize: Theme.fontSizeXs
-            font.weight:  Font.Medium
+            anchors.left:           batBody.right
+            anchors.leftMargin:     5
+            anchors.verticalCenter: parent.verticalCenter
+            width:  batPctText.implicitWidth + 8
+            height: 14
+            radius: 4
+            color:  bat.fillColor
             Behavior on color { ColorAnimation { duration: 400 } }
+
+            Text {
+                id: batPctText
+                anchors.centerIn: parent
+                text:  bat.percent + "%"
+                color: "#000000"
+                font.family:    Theme.font
+                font.pixelSize: Theme.fontSizeXs
+                font.weight:    Font.Bold
+            }
         }
     }
 

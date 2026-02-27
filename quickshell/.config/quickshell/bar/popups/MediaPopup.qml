@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
 import qs
+import Qt5Compat.GraphicalEffects
 
 PanelWindow {
     id: win
@@ -198,6 +199,16 @@ PanelWindow {
             }
             opacity: win.open ? 1.0 : 0.0
             Behavior on opacity { NumberAnimation { duration: 280 } }
+
+            layer.enabled: !Theme.isDark
+            layer.effect: DropShadow {
+                transparentBorder: true
+                horizontalOffset:  Theme.popupShadowX
+                verticalOffset:    Theme.popupShadowY
+                radius:            Theme.popupShadowRadius
+                samples:           32
+                color:             Qt.rgba(0, 0, 0, Theme.popupShadowOpacity)
+            }
 
             // Glossy
             Rectangle {

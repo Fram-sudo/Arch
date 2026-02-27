@@ -190,6 +190,12 @@ Singleton {
     readonly property int sliderRadius:   3
     readonly property int toggleRadius:   12
 
+    // ── Ombres popup ─────────────────────────────────────────────────────
+    readonly property real  popupShadowRadius:  Theme.isDark ? 0 : 28
+    readonly property real  popupShadowOpacity: Theme.isDark ? 0 : 0.18
+    readonly property int   popupShadowX:       0
+    readonly property int   popupShadowY:       6
+
     // ── Animations ────────────────────────────────────────────────────────
     readonly property int animFast:   80
     readonly property int animNormal: 200
