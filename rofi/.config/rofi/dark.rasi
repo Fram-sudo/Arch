@@ -1,0 +1,140 @@
+/* ============================================================
+   dark.rasi — Thème Rofi sombre
+   Couleurs synchronisées avec Theme.qml (isDark: true)
+   ============================================================ */
+
+* {
+    /* Palette — extraite de Theme.qml dark */
+    bg:             #000000;           /* _dark_barBg      */
+    bg-float:       #1A1919;           /* _dark_bgFloat    */
+    bg-hover:       #242222;           /* _dark_bgHover    */
+    fg:             #FFFFFF;           /* _dark_barFg      */
+    fg-muted:       #888280;           /* _dark_fgMuted    */
+    fg-dim:         #3D3B3B;           /* _dark_fgDim      */
+    border-col:     rgba(255,255,255,0.10);  /* _dark_border     */
+    separator-col:  rgba(255,255,255,0.06);  /* _dark_separator  */
+    accent:         #C0293D;           /* red              */
+    accent-dim:     rgba(192,41,61,0.55);    /* redDim           */
+
+    background-color: transparent;
+    text-color:       @fg;
+    border-color:     @border-col;
+}
+
+window {
+    location:          north west;
+    anchor:            north west;
+    x-offset:          8px;
+    y-offset:          36px;          /* barHeight (28px) + gap (8px) */
+
+    width:             290px;
+    background-color:  @bg;
+    border:            1px solid;
+    border-color:      @border-col;
+    border-radius:     18px;
+    padding:           0px;
+}
+
+mainbox {
+    background-color: transparent;
+    padding:          10px;
+    spacing:          8px;
+    children:         [ inputbar, listview ];
+}
+
+/* ── Barre de recherche ─────────────────────────────────── */
+
+inputbar {
+    background-color: @bg-float;
+    border:           1px solid;
+    border-color:     @border-col;
+    border-radius:    10px;
+    padding:          8px 12px;
+    spacing:          8px;
+    children:         [ prompt, entry ];
+}
+
+prompt {
+    background-color: transparent;
+    text-color:       @fg-muted;
+    font:             "JetBrainsMono Nerd Font 13";
+    /* Icône loupe */
+    str:              "󰍉";
+    vertical-align:   0.5;
+}
+
+entry {
+    background-color: transparent;
+    text-color:       @fg;
+    placeholder:      "Rechercher…";
+    placeholder-color: @fg-muted;
+    vertical-align:   0.5;
+    cursor:           text;
+}
+
+/* Masquer les éléments inutiles */
+case-indicator { enabled: false; }
+num-filtered-rows { enabled: false; }
+num-rows { enabled: false; }
+
+/* ── Liste des résultats ────────────────────────────────── */
+
+listview {
+    background-color: transparent;
+    lines:            8;
+    fixed-height:     false;
+    dynamic:          true;
+    spacing:          2px;
+    scrollbar:        false;
+    border:           0px;
+}
+
+element {
+    background-color: transparent;
+    border-radius:    8px;
+    padding:          6px 10px;
+    spacing:          10px;
+    orientation:      horizontal;
+    cursor:           pointer;
+}
+
+element-icon {
+    background-color: transparent;
+    size:             20px;
+    vertical-align:   0.5;
+    cursor:           inherit;
+}
+
+element-text {
+    background-color: transparent;
+    text-color:       @fg-muted;
+    vertical-align:   0.5;
+    cursor:           inherit;
+    highlight:        bold @accent;
+}
+
+/* État sélectionné */
+element selected.normal {
+    background-color: @bg-hover;
+    border:           1px solid;
+    border-color:     @border-col;
+}
+
+element selected.normal .element-text {
+    text-color: @fg;
+}
+
+/* État actif (app déjà ouverte) */
+element normal.active .element-text {
+    text-color: @accent;
+}
+
+element selected.active {
+    background-color: @bg-hover;
+    border:           1px solid;
+    border-color:     @accent-dim;
+}
+
+element selected.active .element-text {
+    text-color: @accent;
+}
