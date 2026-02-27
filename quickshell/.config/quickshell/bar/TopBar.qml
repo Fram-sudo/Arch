@@ -375,7 +375,17 @@ PanelWindow {
                     icon: Theme.isDark ? "󰖔" : "󰖙"
                     iconColor: Theme.barFg
                     active: false
-                    onClicked: Theme.toggleTheme()
+                    onClicked: {
+                        Theme.toggleTheme()
+                        // isDark vient d'être togglé :
+                        // isDark === true  → on vient de passer en dark
+                        // isDark === false → on vient de passer en light
+                        var newTheme = Theme.isDark ? "dark" : "light"
+                        Quickshell.execDetached([
+                            "bash", "-c",
+                            "sed -i 's/@theme \".*\"/@theme \"" + newTheme + "\"/' ~/.config/rofi/config.rasi"
+                        ])
+                    }
                 }
 
                 // Bouton Power — tout à droite

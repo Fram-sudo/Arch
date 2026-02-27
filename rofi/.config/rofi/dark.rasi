@@ -4,17 +4,15 @@
    ============================================================ */
 
 * {
-    /* Palette — extraite de Theme.qml dark */
-    bg:             #000000;           /* _dark_barBg      */
-    bg-float:       #1A1919;           /* _dark_bgFloat    */
-    bg-hover:       #242222;           /* _dark_bgHover    */
-    fg:             #FFFFFF;           /* _dark_barFg      */
-    fg-muted:       #888280;           /* _dark_fgMuted    */
-    fg-dim:         #3D3B3B;           /* _dark_fgDim      */
-    border-col:     rgba(255,255,255,0.10);  /* _dark_border     */
-    separator-col:  rgba(255,255,255,0.06);  /* _dark_separator  */
-    accent:         #C0293D;           /* red              */
-    accent-dim:     rgba(192,41,61,0.55);    /* redDim           */
+    bg:             #000000;
+    bg-float:       #1A1919;
+    bg-hover:       #242222;
+    fg:             #FFFFFF;
+    fg-muted:       #888280;
+    fg-dim:         #3D3B3B;
+    border-col:     rgba(255,255,255,0.10);
+    separator-col:  rgba(255,255,255,0.06);
+    accent:         #C0293D;
 
     background-color: transparent;
     text-color:       @fg;
@@ -22,12 +20,12 @@
 }
 
 window {
-    location:          north west;
-    anchor:            north west;
-    x-offset:          8px;
-    y-offset:          36px;          /* barHeight (28px) + gap (8px) */
+    location:          north;
+    anchor:            north;
+    x-offset:          0px;
+    y-offset:          24px;
 
-    width:             290px;
+    width:             400px;
     background-color:  @bg;
     border:            1px solid;
     border-color:      @border-col;
@@ -42,8 +40,6 @@ mainbox {
     children:         [ inputbar, listview ];
 }
 
-/* ── Barre de recherche ─────────────────────────────────── */
-
 inputbar {
     background-color: @bg-float;
     border:           1px solid;
@@ -55,33 +51,25 @@ inputbar {
 }
 
 prompt {
-    background-color: transparent;
-    text-color:       @fg-muted;
-    font:             "JetBrainsMono Nerd Font 13";
-    /* Icône loupe */
-    str:              "󰍉";
-    vertical-align:   0.5;
+    enabled: false;
 }
 
 entry {
-    background-color: transparent;
-    text-color:       @fg;
-    placeholder:      "Rechercher…";
+    background-color:  transparent;
+    text-color:        @fg;
+    placeholder:       "Rechercher…";
     placeholder-color: @fg-muted;
-    vertical-align:   0.5;
-    cursor:           text;
+    vertical-align:    0.5;
+    cursor:            text;
 }
 
-/* Masquer les éléments inutiles */
-case-indicator { enabled: false; }
+case-indicator    { enabled: false; }
 num-filtered-rows { enabled: false; }
-num-rows { enabled: false; }
-
-/* ── Liste des résultats ────────────────────────────────── */
+num-rows          { enabled: false; }
 
 listview {
     background-color: transparent;
-    lines:            8;
+    lines:            4;
     fixed-height:     false;
     dynamic:          true;
     spacing:          2px;
@@ -110,10 +98,9 @@ element-text {
     text-color:       @fg-muted;
     vertical-align:   0.5;
     cursor:           inherit;
-    highlight:        bold @accent;
+    highlight:        bold #C0293D;
 }
 
-/* État sélectionné */
 element selected.normal {
     background-color: @bg-hover;
     border:           1px solid;
@@ -124,7 +111,6 @@ element selected.normal .element-text {
     text-color: @fg;
 }
 
-/* État actif (app déjà ouverte) */
 element normal.active .element-text {
     text-color: @accent;
 }
@@ -132,7 +118,7 @@ element normal.active .element-text {
 element selected.active {
     background-color: @bg-hover;
     border:           1px solid;
-    border-color:     @accent-dim;
+    border-color:     rgba(192,41,61,0.55);
 }
 
 element selected.active .element-text {
