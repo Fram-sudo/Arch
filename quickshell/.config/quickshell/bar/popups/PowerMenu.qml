@@ -1,4 +1,4 @@
-// PowerMenu.qml — Popup power
+// PowerMenu.qml — Power menu style macOS Tahoe
 import QtQuick
 import Quickshell
 import qs
@@ -9,18 +9,18 @@ PanelWindow {
 
     anchors.top:   true
     anchors.right: true
-    margins.top:   Theme.barHeight
-    margins.right: 4
+    margins.top:   Theme.barHeight + 6
+    margins.right: 8
 
-    implicitWidth:  160
-    property int popupContentH: 4 * 36 + 10
-    property int popupGap: 10
-    implicitHeight: popupContentH + popupGap
+    implicitWidth:  180
+    property int popupGap: 6
+    property int contentH: entries.count * 38 + 16
+    implicitHeight: contentH + popupGap
 
     color:         "transparent"
     exclusionMode: ExclusionMode.Ignore
     aboveWindows:  true
-    visible:       open || pmSlideAnim.running
+    visible:       open || slideAnim.running
 
     property var entries: [
         { label: "Éteindre",    icon: "⏻", cmd: ["systemctl","poweroff"]  },
@@ -35,15 +35,23 @@ PanelWindow {
 
         Rectangle {
             id: pmPanel
-            width: parent.width
-            height: win.popupContentH
+            width:  parent.width
+            height: win.contentH
             radius: Theme.popupRadius
             color:  Theme.popupBg
             border.color: Theme.popupBorder
             border.width: Theme.popupBorderWidth
 
-            y: win.open ? win.popupGap : -height
-            Behavior on y { NumberAnimation { id: pmSlideAnim; duration: 300; easing.type: Easing.OutQuart } }
+            y: win.open ? win.popupGap : -height - 10
+            Behavior on y {
+                NumberAnimation {
+                    id: slideAnim
+                    duration: 300
+                    easing.type: win.open ? Easing.OutQuart : Easing.InQuart
+                }
+            }
+            opacity: win.open ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
 
             Rectangle {
                 z: 0
@@ -62,33 +70,34 @@ PanelWindow {
                 spacing: 2
 
                 Repeater {
+                    id: entries
                     model: win.entries
                     delegate: Rectangle {
                         required property var modelData
-                        width: parent.width; height: 36; radius: 9
+                        width: parent.width; height: 36; radius: 8
                         color: ma.containsMouse ? Theme.popupAccentBright : "transparent"
-                        Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+                        Behavior on color { ColorAnimation { duration: Theme.animFast } }
 
                         Row {
                             anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left; anchors.leftMargin: 12
+                            anchors.left: parent.left; anchors.leftMargin: 10
                             spacing: 10
                             Text {
                                 text: modelData.icon
-                                color: ma.containsMouse ? "#fff" : Theme.popupAccent
-                                font.family: Theme.font; font.pixelSize: Theme.fontSizeSm + 1
-                                Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+                                color: ma.containsMouse ? "#fff" : Theme.red
+                                font.family: Theme.fontMono; font.pixelSize: 13
+                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
                             }
                             Text {
                                 text: modelData.label
                                 color: ma.containsMouse ? "#fff" : Theme.popupFg
                                 font.family: Theme.font; font.pixelSize: Theme.fontSizeSm
-                                Behavior on color { ColorAnimation { duration: Theme.popupAnimFast } }
+                                Behavior on color { ColorAnimation { duration: Theme.animFast } }
                             }
                         }
                         MouseArea {
-                            id: ma; anchors.fill: parent
-                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            id: ma; anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: { win.open = false; Quickshell.execDetached(modelData.cmd) }
                         }
                     }
